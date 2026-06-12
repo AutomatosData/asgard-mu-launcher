@@ -1,0 +1,18 @@
+{
+  "name": "update-creator",
+  "version": "1.0.0",
+  "description": "MU Online Update Creator",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-packager . update-creator --platform=win32 --arch=x64 --out=dist --overwrite"
+  },
+  "devDependencies": {
+    "@electron/packager": "^18.4.4",
+    "electron": "^28.0.0"
+  },
+  "dependencies": {
+    "fs-extra": "^11.1.0",
+    "muonline": "file:.."
+  }
+}

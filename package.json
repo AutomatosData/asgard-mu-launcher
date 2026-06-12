@@ -1,0 +1,98 @@
+{
+  "name": "muonline",
+  "version": "1.0.0",
+  "description": "MU Online - Advanced Launcher",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "cross-env NODE_ENV=development electron .",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win --dir --publish=never",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder --publish=never",
+    "pack-win": "npx electron-packager . MUOnline --platform=win32 --arch=x64 --out=dist --overwrite",
+    "pack-win-npx": "npx electron-packager . MUOnline --platform=win32 --arch=x64 --out=dist --overwrite",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "keywords": [
+    "mu-online",
+    "muonline",
+    "launcher",
+    "electron",
+    "game"
+  ],
+  "author": "MU Online Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@electron/packager": "^18.4.4",
+    "@electron/rebuild": "^4.0.1",
+    "cross-env": "^10.0.0",
+    "electron": "^39.0.0",
+    "electron-builder": "^26.0.12",
+    "electron-packager": "^17.1.2",
+    "electron-rebuild": "^3.2.9"
+  },
+  "dependencies": {
+    "abs": "^1.3.15",
+    "axios": "^1.6.0",
+    "delayed-stream": "^1.0.0",
+    "electron-store": "^8.1.0",
+    "es-define-property": "^1.0.1",
+    "es-errors": "^1.3.0",
+    "es-object-atoms": "^1.1.1",
+    "fast-deep-equal": "^3.1.3",
+    "fast-uri": "^3.1.0",
+    "fs-extra": "^11.1.0",
+    "get-intrinsic": "^1.3.0",
+    "gopd": "^1.2.0",
+    "math-intrinsics": "^1.1.0",
+    "mime-db": "^1.54.0",
+    "mimic-fn": "^5.0.0",
+    "node-stream-zip": "^1.15.0",
+    "p-try": "^3.0.0"
+  },
+  "build": {
+    "appId": "muonline.app",
+    "productName": "MU Online",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "node_modules/axios",
+        "to": "node_modules/axios"
+      },
+      {
+        "from": "node_modules/electron-store",
+        "to": "node_modules/electron-store"
+      },
+      {
+        "from": "node_modules/fs-extra",
+        "to": "node_modules/fs-extra"
+      },
+      {
+        "from": "node_modules/node-stream-zip",
+        "to": "node_modules/node-stream-zip"
+      }
+    ],
+    "asar": true,
+    "compression": "maximum",
+    "publish": null,
+    "win": {
+      "target": "dir",
+      "sign": false,
+      "icon": "src/renderer/assets/icon.ico",
+      "executableName": "MUOnline"
+    },
+    "mac": {
+      "icon": "icon.ico"
+    },
+    "linux": {
+      "icon": "icon.png"
+    }
+  }
+}

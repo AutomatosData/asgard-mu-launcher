@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MU Online - Server Info</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%);
+            color: #ffffff;
+            overflow: hidden;
+        }
+        
+        .launcher-container {
+            width: 100%;
+            height: 100vh;
+            padding: 5px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        .news-section, .rankings-section {
+            overflow-y: auto;
+        }
+
+        /* Grid placement para layout 2x2 */
+        .news-section { grid-column: 1; grid-row: 1; }
+        .rankings-section { grid-column: 2; grid-row: 1; }
+        
+        .socButton {
+            width: 100%;
+            display: flex;
+            text-decoration: none;
+            color: #ffffff;
+            font-size: 25px;
+            font-weight: 600;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            align-items: center;
+            align-content: center;
+            justify-content: flex-start;
+        }
+
+        .socButton:hover {
+            padding-left: 10px;
+            text-decoration: none;
+            color: #ffffff;
+        }
+
+        .socButton span {
+            display: block;
+            width: 100%;
+            color: #fcd4c0;
+            font-size: 13px;
+            font-weight: 400;
+            margin-top: 5px;
+        }
+
+        .socButton.socDiscord {
+            background: linear-gradient(135deg, #5865F2 0%, #4752C4 100%);
+            position: relative;
+        }
+
+        .socButton.socFacebook {
+            background: linear-gradient(135deg, #7289DA 0%, #5B6EAE 100%);
+            position: relative;
+        }
+        
+        .card-content {
+            padding: 7px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .ranking-list {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+        .ranking-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        .news-section::-webkit-scrollbar,
+        .rankings-section::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .news-section::-webkit-scrollbar-track,
+        .rankings-section::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+        }
+        
+        .news-section::-webkit-scrollbar-thumb,
+        .rankings-section::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+        
+        .section-title {
+            color: #ffffff;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1.2em;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 8px;
+        }
+        
+        .section-title.info-section {
+            justify-content: space-between;
+        }
+        
+        .section-title-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .news-item {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            padding: 13.43px;
+            margin-bottom: 10px;
+            border-left: 3px solid #64b5f6;
+            transition: all 0.3s ease;
+        }
+        
+        .news-item:hover {
+            background: rgba(255, 255, 255, 0.06);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        .news-title {
+            color: #ffffff;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+            font-weight: 600;
+            line-height: 1.4;
+        }
+        
+        .news-meta {
+            color: #888888;
+            font-size: 0.75em;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .news-category {
+            background: rgba(100, 181, 246, 0.15);
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            color: #64b5f6;
+            font-weight: 500;
+        }
+        
+        .patch-news {
+            border-left-color: #ff9800;
+        }
+        
+        .patch-news .news-category {
+            background: rgba(255, 152, 0, 0.15);
+            color: #ff9800;
+        }
+        
+        .ranking-item {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .ranking-item:hover {
+            background: rgba(255, 255, 255, 0.06);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        .ranking-icon {
+            width: 32px;
+            height: 32px;
+            background: rgba(100, 181, 246, 0.1);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            color: #64b5f6;
+            font-size: 0.9em;
+            border: 1px solid rgba(100, 181, 246, 0.2);
+        }
+        
+        .ranking-info {
+            flex: 1;
+        }
+        
+        .ranking-title {
+            color: #ffffff;
+            font-weight: 600;
+            margin-bottom: 3px;
+            font-size: 0.9em;
+        }
+        
+        .ranking-subtitle {
+            color: #b0b0b0;
+            font-size: 0.8em;
+        }
+        
+        .ranking-value {
+            color: #64b5f6;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+        
+        .server-status .ranking-icon {
+            background: rgba(76, 175, 80, 0.1);
+            color: #4caf50;
+            border-color: rgba(76, 175, 80, 0.2);
+        }
+        
+        .server-status .ranking-value {
+            color: #4caf50;
+        }
+        
+        .online-players .ranking-icon {
+            background: rgba(255, 152, 0, 0.1);
+            color: #ff9800;
+            border-color: rgba(255, 152, 0, 0.2);
+        }
+        
+        .online-players .ranking-value {
+            color: #ff9800;
+        }
+        
+        .top-player .ranking-icon,
+        .top-guild .ranking-icon,
+        .pvp-champion .ranking-icon,
+        .boss-slayer .ranking-icon {
+            background: rgba(156, 39, 176, 0.1);
+            color: #9c27b0;
+            border-color: rgba(156, 39, 176, 0.2);
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        
+        .online-indicator {
+            animation: pulse 3s infinite;
+        }
+        
+        .loading {
+            color: #888;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="launcher-container">
+        
+        <div class="news-section">
+            <div class="section-title">
+                News & Updates
+            </div>
+
+            <div class="news-item">
+                <div class="news-title">Welcome to MU Online!!!</div>
+                <div class="news-meta">
+                    <span class="news-category">News</span>
+                    <span>26/11/2025</span>
+                </div>
+            </div>
+
+            <div class="news-item">
+                <div class="news-title">New Season Starting Soon</div>
+                <div class="news-meta">
+                    <span class="news-category">Event</span>
+                    <span>25/11/2025</span>
+                </div>
+            </div>
+
+            <div class="news-item patch-news">
+                <div class="news-title">Patch 1.0 - Bug Fixes!!!</div>
+                <div class="news-meta">
+                    <span class="news-category">Update</span>
+                    <span>24/11/2025</span>
+                </div>
+            </div>
+
+            <a href="#" class="socButton socDiscord">
+                <div class="card-content">
+                    Guides
+                    <span>Starter guides,<br>droplist &amp; tutorials</span>
+                </div>
+            </a>
+        </div>
+
+        <div class="rankings-section">
+            <div class="section-title info-section">
+                <div class="section-title-left">
+                    Information
+                </div>
+            </div>
+            
+            <div class="ranking-list">
+
+            <div class="ranking-item online-players">
+                <div class="ranking-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="ranking-info">
+                    <div class="ranking-title">Online Players</div>
+                    <div class="ranking-subtitle">Currently active and playing</div>
+                </div>
+                <div class="ranking-value online-indicator">234</div>
+            </div>
+            
+            <div class="ranking-grid">
+            
+            <div class="ranking-item top-player">
+                <div class="ranking-icon">
+                    <i class="fas fa-crown"></i>
+                </div>
+                <div class="ranking-info">
+                    <div class="ranking-title">Top Player</div>
+                    <div class="ranking-subtitle">DarkKnight</div>
+                </div>
+            </div>
+
+            <div class="ranking-item top-guild">
+                <div class="ranking-icon">
+                    <i class="fas fa-shield"></i>
+                </div>
+                <div class="ranking-info">
+                    <div class="ranking-title">Top Guild</div>
+                    <div class="ranking-subtitle">Legends</div>
+                </div>
+            </div>
+
+            <div class="ranking-item pvp-champion">
+                <div class="ranking-icon">
+                    <i class="fas fa-crosshairs"></i>
+                </div>
+                <div class="ranking-info">
+                    <div class="ranking-title">PvP</div>
+                    <div class="ranking-subtitle">Assassin</div>
+                </div>
+            </div>
+
+            <div class="ranking-item boss-slayer">
+                <div class="ranking-icon">
+                    <i class="fas fa-skull"></i>
+                </div>
+                <div class="ranking-info">
+                    <div class="ranking-title">Boss Slayer</div>
+                    <div class="ranking-subtitle">BossHunter</div>
+                </div>
+            </div>
+            </div>
+
+            <a href="https://discord.gg/" target="_blank" class="socButton socFacebook">
+                <div class="card-content">
+                    Discord
+                    <span>Free WCoin, giveaways,<br>market &amp; more!</span>
+                </div>
+            </a>
+        </div> 
+        </div> 
+
+    </div>
+</body>
+</html>

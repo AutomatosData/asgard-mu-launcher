@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; img-src 'self' data:; font-src 'self' https://cdnjs.cloudflare.com; connect-src 'self' http://localhost https://mudmg.com; frame-src 'self' http://localhost https://mudmg.com;">
+    <title>Mu DMG</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/components.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Configuração centralizada de URLs -->
+    <script src="../shared/url-config.js"></script>
+</head>
+<body>
+    <!-- Title Bar -->
+    <div class="title-bar">
+        <div class="title-bar-left">
+            <img src="assets/icon.ico" alt="MU Online" class="logo">
+            <span class="title">MU Online</span>
+        </div>
+        
+        <div class="title-bar-right">
+            <button class="title-bar-btn" id="autoLoginBtn" title="Auto Login">
+                <i class="fas fa-key"></i>
+            </button>
+            <button class="title-bar-btn" id="settingsBtn" title="Settings">
+                <i class="fas fa-cog"></i>
+            </button>
+            <button class="title-bar-btn" id="minimizeBtn">
+                <i class="fas fa-window-minimize"></i>
+            </button>
+            <button class="title-bar-btn" id="closeBtn">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-container">
+        <!-- Content Area -->
+        <div class="content-area">
+            <!-- Web Content (News/Info) -->
+            <div class="web-content" id="webContent">
+                <!-- Loader Principal -->
+                <div class="main-loader" id="mainLoader">
+                    <div class="loader-container">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <div class="loader-text">
+                            <h3>Loading...</h3>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Loader Secundário (para webview) -->
+                <div class="loading-spinner" id="webLoading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <span>Loading...</span>
+                </div>
+                
+                <!-- Estado de erro -->
+                <div class="loading-error-state" id="webError" style="display: none;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>Failed to load content</span>
+                </div>
+                <webview id="newsWebview" src="about:blank" nodeintegration websecurity="false" allowpopups disablewebsecurity preload="./scripts/webview-preload.js"></webview>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-left">
+                <!-- Botão de configurações removido - launcher funciona automaticamente -->
+            </div>
+            
+            <div class="footer-center">
+                <!-- Update Progress no Footer -->
+                <div class="update-progress-footer" id="updateProgressFooter">
+                    <div class="progress-row">
+                        <span class="progress-label">Download:</span>
+                        <div class="progress-bar-footer">
+                            <div class="progress-fill-footer" id="downloadProgressFooter"></div>
+                        </div>
+                        <span class="progress-text-footer" id="downloadTextFooter">0%</span>
+                    </div>
+                    <div class="progress-row">
+                        <span class="progress-label">Overall:</span>
+                        <div class="progress-bar-footer">
+                            <div class="progress-fill-footer" id="overallProgressFooter"></div>
+                        </div>
+                        <span class="progress-text-footer" id="overallTextFooter">0%</span>
+                    </div>
+                    <div class="current-file-info" id="currentFileInfo">
+                        <span class="status-text">Initializing launcher...</span>
+                        <div class="account-counter" id="accountCounter">
+                            <span class="counter-text">Contas Conectadas</span>
+                            <span class="counter-value" id="connectedAccounts">0</span>
+                            <span class="counter-separator">/</span>
+                            <span class="counter-limit">3</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="footer-right">
+                <button class="btn btn-primary" id="playBtn" disabled>
+                    <i class="fas fa-play"></i>
+                    Play Game
+                </button>
+            </div>
+        </footer>
+    </div>
+
+        <!-- Settings Modal -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-content settings-modal">
+            <div class="modal-header">
+                <h3><i class="fas fa-cog"></i> Game Settings</h3>
+                <button class="modal-close" id="closeSettings">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="modal-body">
+                <div class="settings-tabs">
+                    <button class="tab-btn active" data-tab="display">
+                        <i class="fas fa-desktop"></i>
+                        Display
+                    </button>
+                    <button class="tab-btn" data-tab="audio">
+                        <i class="fas fa-volume-up"></i>
+                        Audio
+                    </button>
+                    <button class="tab-btn" data-tab="language">
+                        <i class="fas fa-globe"></i>
+                        Language
+                    </button>
+                </div>
+
+                <div class="settings-content">
+                    <!-- Display Tab -->
+                    <div class="tab-content active" id="display-tab">
+                        <div class="setting-group">
+                            <h3>Display Mode</h3>
+                            <div class="radio-group">
+                                <label class="radio-option">
+                                    <input type="radio" name="displayMode" value="window" checked>
+                                    <span class="radio-custom"></span>
+                                    <span class="radio-label">Window Mode</span>
+                                </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="displayMode" value="fullscreen">
+                                    <span class="radio-custom"></span>
+                                    <span class="radio-label">Fullscreen Mode</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="setting-group">
+                            <h3>Resolution</h3>
+                            <select class="resolution-dropdown" id="resolutionSelect">
+                                <option value="640x480">640x480</option>
+                                <option value="800x600">800x600</option>
+                                <option value="1024x768">1024x768</option>
+                                <option value="1280x1024">1280x1024</option>
+                                <option value="1366x768">1366x768 (Wide)</option>
+                                <option value="1440x900">1440x900 (Wide)</option>
+                                <option value="1600x900">1600x900 (Wide)</option>
+                                <option value="1680x1050">1680x1050 (Wide)</option>
+                                <option value="1920x1080" selected>1920x1080 (Wide)</option>
+                                <option value="1920x1200">1920x1200 (Wide)</option>
+                                <option value="2500x1440">2500x1440 (Wide)</option>
+                                <option value="2500x1600">2500x1600 (Wide)</option>
+                                <option value="3840x2160">3840x2160 (Wide - 4K)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Audio Tab -->
+                    <div class="tab-content" id="audio-tab">
+                        <div class="setting-group">
+                            <h3>Audio Settings</h3>
+                            <div class="checkbox-group">
+                                <label class="checkbox-option">
+                                    <input type="checkbox" id="musicEnabled" checked>
+                                    <span class="checkbox-custom"></span>
+                                    <span class="checkbox-label">Enable Music</span>
+                                </label>
+                                <label class="checkbox-option">
+                                    <input type="checkbox" id="soundEnabled" checked>
+                                    <span class="checkbox-custom"></span>
+                                    <span class="checkbox-label">Enable Sound Effects</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Language Tab -->
+                    <div class="tab-content" id="language-tab">
+                        <div class="setting-group">
+                            <h3>Game Language</h3>
+                            <div class="language-options">
+                                <label class="language-option">
+                                    <input type="radio" name="language" value="Eng" checked>
+                                    <span class="language-custom">🇺🇸 English</span>
+                                </label>
+                                <label class="language-option">
+                                    <input type="radio" name="language" value="Por">
+                                    <span class="language-custom">🇧🇷 Português</span>
+                                </label>
+                                <label class="language-option">
+                                    <input type="radio" name="language" value="Spa">
+                                    <span class="language-custom">🇪🇸 Español</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelSettings">Cancel</button>
+                <button class="btn btn-primary" id="saveSettings">Save Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Container -->
+    <div class="notification-container" id="notificationContainer"></div>
+    
+
+    <!-- Auto Login Modal -->
+    <div class="modal" id="autoLoginModal">
+        <div class="modal-content settings-modal">
+            <div class="modal-header">
+                <h3><i class="fas fa-key"></i> Auto Login Configuration</h3>
+                <button class="modal-close" id="closeAutoLogin">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="modal-body">
+                <div class="auto-login-controls">
+                    <label class="checkbox-option">
+                        <input type="checkbox" id="onSystemEnabled">
+                        <span class="checkbox-custom"></span>
+                        <span class="checkbox-label">Enable Auto Login on System Start</span>
+                    </label>
+                    <div class="account-selector">
+                        <label for="accountAmount">Accounts:</label>
+                        <select class="resolution-dropdown" id="accountAmount">
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3" selected>3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="accounts-grid" id="accountsGrid">
+                    <!-- Account cards will be generated here -->
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelAutoLogin">Cancel</button>
+                <button class="btn btn-primary" id="saveAutoLogin">Save Configuration</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Installation Progress Modal -->
+    <div class="modal" id="dataInstallationModal">
+        <div class="modal-content data-installation-modal">
+            <div class="modal-header">
+                <h3><i class="fas fa-download"></i> Instalando Dados do Jogo</h3>
+            </div>
+            
+            <div class="modal-body">
+                <div class="installation-content-compact">
+                    <!-- Download Progress -->
+                    <div class="progress-section-compact" id="downloadProgressSection">
+                        <div class="progress-label-row-compact">
+                            <span class="progress-label-compact">Download:</span>
+                            <span class="progress-percentage-compact" id="downloadProgressPercentage">0%</span>
+                        </div>
+                        <div class="progress-bar-container-compact">
+                            <div class="progress-bar-compact">
+                                <div class="progress-fill-compact" id="downloadProgressFill"></div>
+                            </div>
+                        </div>
+                        <div class="progress-details-compact" id="downloadProgressDetails">
+                            <span class="download-speed-compact" id="downloadSpeed">0 MB/s</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Overall Progress -->
+                    <div class="progress-section-compact">
+                        <div class="progress-label-row-compact">
+                            <span class="progress-label-compact">Progresso Geral:</span>
+                            <span class="progress-percentage-compact" id="overallProgressPercentage">0%</span>
+                        </div>
+                        <div class="progress-bar-container-compact">
+                            <div class="progress-bar-compact overall-progress-bar-compact">
+                                <div class="progress-fill-compact" id="overallProgressFill"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Current Status -->
+                    <div class="current-status-compact" id="currentStatus">
+                        <i class="fas fa-info-circle"></i>
+                        <span id="currentStatusText">Inicializando...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="scripts/app.js"></script>
+    <script src="scripts/settings.js"></script>
+    <script src="scripts/game-settings.js"></script>
+    <script src="scripts/auto-login.js"></script>
+</body>
+</html>

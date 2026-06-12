@@ -1,0 +1,48 @@
+# Arquivos de build
+dist/
+dist2/
+executables/
+build-*.bat
+build-*.js
+electron-builder.json
+package-pkg.json
+
+# Arquivos de desenvolvimento
+*.log
+debug.log
+logs/
+
+# Arquivos temporários
+*.tmp
+*.temp
+
+# Arquivos de sistema
+.DS_Store
+Thumbs.db
+
+# Arquivos de IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Arquivos de backup
+*~
+*.bak
+*.backup
+
+# Arquivos de teste
+test/
+tests/
+*.test.js
+*.spec.js
+
+# Documentação
+README.md
+*.md
+docs/
+
+# Arquivos de configuração de desenvolvimento
+.eslintrc
+.prettierrc
+tsconfig.json
