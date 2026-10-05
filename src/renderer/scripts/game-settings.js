@@ -169,10 +169,15 @@ class GameSettings {
         try {
             const settings = this.collectSettingsFromUI();
             await this.applySettingsToRegistry(settings);
-            
+
+            // Aplicar o novo idioma na interface imediatamente
+            if (window.i18n && settings.langSelection) {
+                window.i18n.setLanguage(settings.langSelection);
+            }
+
             // Show success notification
             if (window.muDMG && window.muDMG.showNotification) {
-                window.muDMG.showNotification('Game settings saved successfully', 'success');
+                window.muDMG.showNotification(window.i18n.t('notify.settingsSaved'), 'success');
             }
 
             // Close modal
@@ -182,7 +187,7 @@ class GameSettings {
         } catch (error) {
             console.error('Failed to save settings:', error);
             if (window.muDMG && window.muDMG.showNotification) {
-                window.muDMG.showNotification('Failed to save settings', 'error');
+                window.muDMG.showNotification(window.i18n.t('notify.settingsFailed'), 'error');
             }
         }
     }

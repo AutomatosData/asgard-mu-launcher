@@ -325,7 +325,8 @@ class DataManager {
             if (progressCallback) {
                 progressCallback({
                     type: 'installation-error',
-                    message: `Installation error: ${error.message}`
+                    message: `Installation error: ${error.message}`,
+                    error: error.message
                 });
             }
             

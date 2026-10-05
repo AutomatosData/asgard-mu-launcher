@@ -98,6 +98,11 @@ let dataManager;
 let launcherOptionManager;
 
 const URL_CONFIG = require('../shared/url-config');
+const I18N = require('../shared/i18n');
+
+// Idioma da interface (mesmo valor de langSelection em LauncherOption.if)
+let currentLanguage = I18N.DEFAULT_LANGUAGE;
+const t = (key, params) => I18N.translate(currentLanguage, key, params);
 
 const defaultConfig = {
   gamePath: isDev ? process.cwd() : path.dirname(process.execPath),
@@ -249,7 +254,7 @@ function createWindow() {
   mainWindow.webContents.on('context-menu', (event, params) => {
     const menu = Menu.buildFromTemplate([
       {
-        label: 'Inspecionar',
+        label: t('menu.inspect'),
         click: () => {
           try {
             mainWindow.webContents.inspectElement(params.x, params.y);
@@ -292,10 +297,24 @@ function createTray() {
   
   tray = new Tray(trayIcon);
   tray.setToolTip('AsgardMU');
-  
+
+  updateTrayMenu();
+
+  tray.on('click', () => {
+    if (mainWindow) {
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+}
+
+// (Re)monta o menu da bandeja no idioma atual
+function updateTrayMenu() {
+  if (!tray) return;
+
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: 'Show Launcher',
+      label: t('tray.show'),
       click: () => {
         if (mainWindow) {
           mainWindow.show();
@@ -304,7 +323,7 @@ function createTray() {
       }
     },
     {
-      label: 'Launch Game',
+      label: t('tray.launch'),
       click: async () => {
         if (mainWindow) {
           mainWindow.webContents.send('launch-game-from-tray');
@@ -313,7 +332,7 @@ function createTray() {
     },
     { type: 'separator' },
     {
-      label: 'Quit',
+      label: t('tray.quit'),
       click: () => {
         isQuiting = true;
         // Não fechar game processes automaticamente - deixar o jogo rodar
@@ -323,20 +342,13 @@ function createTray() {
   ]);
   
   tray.setContextMenu(contextMenu);
-  
-  tray.on('click', () => {
-    if (mainWindow) {
-      mainWindow.show();
-      mainWindow.focus();
-    }
-  });
 }
 
 function showMinimizeNotification() {
   if (tray) {
     tray.displayBalloon({
       title: 'AsgardMU',
-      content: 'AsgardMU minimized to system tray',
+      content: t('tray.minimized'),
       icon: resolveAsset('icon.ico')
     });
   }
@@ -368,7 +380,15 @@ app.whenReady().then(() => {
   dataManager = new DataManager();
   
   launcherOptionManager = new LauncherOptionManager();
-  
+
+  // Carregar idioma salvo para o menu da bandeja e notificações
+  launcherOptionManager.readLauncherOptions()
+    .then(options => {
+      currentLanguage = I18N.normalize(launcherOptionManager.convertToGameSettings(options).langSelection);
+      updateTrayMenu();
+    })
+    .catch(err => console.error('[Main] Failed to read language:', err));
+
   // Verificar atualizações sem bloquear o launcher
   console.log('[Main] Checking for updates...');
   checkAndInstallGameData().catch(err => {
@@ -449,7 +469,13 @@ ipcMain.handle('save-launcher-options', async (event, settings) => {
     
     const launcherOptions = launcherOptionManager.convertFromGameSettings(settings);
     const success = await launcherOptionManager.writeLauncherOptions(launcherOptions);
-    
+
+    // Atualizar idioma do processo principal (menu da bandeja / notificações)
+    if (success && settings.langSelection) {
+      currentLanguage = I18N.normalize(settings.langSelection);
+      updateTrayMenu();
+    }
+
     return { success };
   } catch (error) {
     console.error('Failed to save launcher options:', error);
@@ -579,7 +605,7 @@ ipcMain.on('character-selected', (event, { name }) => {
       mainWindow.webContents.send('character-selected', { name });
     }
     
-    showGameNotification('Character Selected', `Character "${name}" has been selected`);
+    showGameNotification(t('tray.characterSelected'), t('tray.characterSelectedMsg', { name }));
     
   } catch (error) {
     console.error('Error handling character selection:', error);

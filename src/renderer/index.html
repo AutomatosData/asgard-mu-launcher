@@ -11,6 +11,7 @@
     
     <!-- Configuração centralizada de URLs -->
     <script src="../shared/url-config.js"></script>
+    <script src="../shared/i18n.js"></script>
 </head>
 <body>
     <!-- Title Bar -->
@@ -21,7 +22,7 @@
         </div>
         
         <div class="title-bar-right">
-            <button class="title-bar-btn" id="settingsBtn" title="Settings">
+            <button class="title-bar-btn" id="settingsBtn" title="Settings" data-i18n-title="titlebar.settings">
                 <i class="fas fa-cog"></i>
             </button>
             <button class="title-bar-btn" id="minimizeBtn">
@@ -37,14 +38,14 @@
     <div class="main-container">
         <!-- Content Area -->
         <div class="content-area">
-            <!-- Web Content (News/Info) -->
+            <!-- Web Content (new/Info) -->
             <div class="web-content" id="webContent">
                 <!-- Loader Principal -->
                 <div class="main-loader" id="mainLoader">
                     <div class="loader-container">
                         <i class="fas fa-spinner fa-spin"></i>
                         <div class="loader-text">
-                            <h3>Loading...</h3>
+                            <h3 data-i18n="loading">Loading...</h3>
                         </div>
                     </div>
                 </div>
@@ -52,15 +53,15 @@
                 <!-- Loader Secundário (para webview) -->
                 <div class="loading-spinner" id="webLoading">
                     <i class="fas fa-spinner fa-spin"></i>
-                    <span>Loading...</span>
+                    <span data-i18n="loading">Loading...</span>
                 </div>
                 
                 <!-- Estado de erro -->
                 <div class="loading-error-state" id="webError" style="display: none;">
                     <i class="fas fa-exclamation-triangle"></i>
-                    <span>Failed to load content</span>
+                    <span data-i18n="web.error">Failed to load content</span>
                 </div>
-                <webview id="newsWebview" src="about:blank" nodeintegration websecurity="false" allowpopups disablewebsecurity preload="./scripts/webview-preload.js"></webview>
+                <webview id="newWebview" src="about:blank" nodeintegration websecurity="false" allowpopups disablewebsecurity preload="./scripts/webview-preload.js"></webview>
             </div>
         </div>
 
@@ -74,14 +75,14 @@
                 <!-- Update Progress no Footer -->
                 <div class="update-progress-footer" id="updateProgressFooter">
                     <div class="progress-row">
-                        <span class="progress-label">Download:</span>
+                        <span class="progress-label" data-i18n="footer.download">Download:</span>
                         <div class="progress-bar-footer">
                             <div class="progress-fill-footer" id="downloadProgressFooter"></div>
                         </div>
                         <span class="progress-text-footer" id="downloadTextFooter">0%</span>
                     </div>
                     <div class="progress-row">
-                        <span class="progress-label">Overall:</span>
+                        <span class="progress-label" data-i18n="footer.overall">Overall:</span>
                         <div class="progress-bar-footer">
                             <div class="progress-fill-footer" id="overallProgressFooter"></div>
                         </div>
@@ -90,7 +91,7 @@
                     <div class="current-file-info" id="currentFileInfo">
                         <span class="status-text">Initializing launcher...</span>
                         <div class="account-counter" id="accountCounter">
-                            <span class="counter-text">Contas Conectadas</span>
+                            <span class="counter-text" data-i18n="footer.accounts">Connected Accounts</span>
                             <span class="counter-value" id="connectedAccounts">0</span>
                         </div>
                     </div>
@@ -100,7 +101,7 @@
             <div class="footer-right">
                 <button class="btn btn-primary" id="playBtn" disabled>
                     <i class="fas fa-play"></i>
-                    Play Game
+                    <span data-i18n="play">Play Game</span>
                 </button>
             </div>
         </footer>
@@ -110,7 +111,7 @@
     <div class="modal" id="settingsModal">
         <div class="modal-content settings-modal">
             <div class="modal-header">
-                <h3><i class="fas fa-cog"></i> Game Settings</h3>
+                <h3><i class="fas fa-cog"></i> <span data-i18n="settings.title">Game Settings</span></h3>
                 <button class="modal-close" id="closeSettings">
                     <i class="fas fa-times"></i>
                 </button>
@@ -120,11 +121,11 @@
                 <div class="settings-tabs">
                     <button class="tab-btn active" data-tab="display">
                         <i class="fas fa-desktop"></i>
-                        Game
+                        <span data-i18n="settings.tabGame">Game</span>
                     </button>
                     <button class="tab-btn" data-tab="language">
                         <i class="fas fa-globe"></i>
-                        Account
+                        <span data-i18n="settings.tabAccount">Account</span>
                     </button>
                 </div>
 
@@ -132,23 +133,23 @@
                     <!-- Display Tab -->
                     <div class="tab-content active" id="display-tab">
                         <div class="setting-group">
-                            <h3>Display Mode</h3>
+                            <h3 data-i18n="settings.displayMode">Display Mode</h3>
                             <div class="radio-group">
                                 <label class="radio-option">
                                     <input type="radio" name="displayMode" value="window" checked>
                                     <span class="radio-custom"></span>
-                                    <span class="radio-label">Window Mode</span>
+                                    <span class="radio-label" data-i18n="settings.window">Window Mode</span>
                                 </label>
                                 <label class="radio-option">
                                     <input type="radio" name="displayMode" value="fullscreen">
                                     <span class="radio-custom"></span>
-                                    <span class="radio-label">Fullscreen Mode</span>
+                                    <span class="radio-label" data-i18n="settings.fullscreen">Fullscreen Mode</span>
                                 </label>
                             </div>
                         </div>
 
                         <div class="setting-group">
-                            <h3>Resolution</h3>
+                            <h3 data-i18n="settings.resolution">Resolution</h3>
                             <select class="resolution-dropdown" id="resolutionSelect">
                                 <option value="800x600">800x600</option>
                                 <option value="1024x768">1024x768</option>
@@ -169,17 +170,17 @@
                         </div>
 
                         <div class="setting-group">
-                            <h3>Audio Settings</h3>
+                            <h3 data-i18n="settings.audio">Audio Settings</h3>
                             <div class="checkbox-group">
                                 <label class="checkbox-option">
                                     <input type="checkbox" id="musicEnabled">
                                     <span class="checkbox-custom"></span>
-                                    <span class="checkbox-label">Enable Music</span>
+                                    <span class="checkbox-label" data-i18n="settings.music">Enable Music</span>
                                 </label>
                                 <label class="checkbox-option">
                                     <input type="checkbox" id="soundEnabled">
                                     <span class="checkbox-custom"></span>
-                                    <span class="checkbox-label">Enable Sound Effects</span>
+                                    <span class="checkbox-label" data-i18n="settings.sound">Enable Sound Effects</span>
                                 </label>
                             </div>
                         </div>
@@ -188,11 +189,11 @@
                     <!-- Language Tab -->
                     <div class="tab-content" id="language-tab">
                         <div class="setting-group">
-                            <h3>Account</h3>
-                            <input type="text" id="accountId" maxlength="10" placeholder="Enter account ID (max 10 chars)">
+                            <h3 data-i18n="settings.account">Account</h3>
+                            <input type="text" id="accountId" maxlength="10" placeholder="Enter account ID (max 10 chars)" data-i18n-placeholder="settings.accountPlaceholder">
                         </div>
                         <div class="setting-group">
-                            <h3>Game Language</h3>
+                            <h3 data-i18n="settings.language">Language</h3>
                             <div class="language-options">
                                 <label class="language-option">
                                     <input type="radio" name="language" value="Eng" checked>
@@ -214,8 +215,8 @@
             </div>
             
             <div class="modal-footer">
-                <button class="btn btn-secondary" id="cancelSettings">Cancel</button>
-                <button class="btn btn-primary" id="saveSettings">Save Settings</button>
+                <button class="btn btn-secondary" id="cancelSettings" data-i18n="settings.cancel">Cancel</button>
+                <button class="btn btn-primary" id="saveSettings" data-i18n="settings.save">Save Settings</button>
             </div>
         </div>
     </div>
@@ -228,7 +229,7 @@
     <div class="modal" id="dataInstallationModal">
         <div class="modal-content data-installation-modal">
             <div class="modal-header">
-                <h3><i class="fas fa-download"></i> Instalando Dados do Jogo</h3>
+                <h3><i class="fas fa-download"></i> <span data-i18n="install.title">Installing Game Data</span></h3>
             </div>
             
             <div class="modal-body">
@@ -236,7 +237,7 @@
                     <!-- Download Progress -->
                     <div class="progress-section-compact" id="downloadProgressSection">
                         <div class="progress-label-row-compact">
-                            <span class="progress-label-compact">Download:</span>
+                            <span class="progress-label-compact" data-i18n="footer.download">Download:</span>
                             <span class="progress-percentage-compact" id="downloadProgressPercentage">0%</span>
                         </div>
                         <div class="progress-bar-container-compact">
@@ -252,7 +253,7 @@
                     <!-- Overall Progress -->
                     <div class="progress-section-compact">
                         <div class="progress-label-row-compact">
-                            <span class="progress-label-compact">Progresso Geral:</span>
+                            <span class="progress-label-compact" data-i18n="install.overall">Overall Progress:</span>
                             <span class="progress-percentage-compact" id="overallProgressPercentage">0%</span>
                         </div>
                         <div class="progress-bar-container-compact">
@@ -265,7 +266,7 @@
                     <!-- Current Status -->
                     <div class="current-status-compact" id="currentStatus">
                         <i class="fas fa-info-circle"></i>
-                        <span id="currentStatusText">Inicializando...</span>
+                        <span id="currentStatusText">Initializing...</span>
                     </div>
                 </div>
             </div>
@@ -273,6 +274,7 @@
     </div>
 
     <!-- Scripts -->
+    <script src="scripts/i18n.js"></script>
     <script src="scripts/app.js"></script>
     <script src="scripts/settings.js"></script>
     <script src="scripts/game-settings.js"></script>

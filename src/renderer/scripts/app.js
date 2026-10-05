@@ -10,11 +10,17 @@ class MuDMG {
         this.connectedAccounts = 0;
         this.maxAccounts = Infinity; // Sem limite de contas
         this.accountCheckInterval = null;
+        this.lastStatus = null; // { key, params } do status do rodapé, para retraduzir
+        this.lastDataProgress = null; // último progresso da instalação dos dados
         this.init();
     }
 
     async init() {
         try {
+            // Carregar idioma salvo e retraduzir textos dinâmicos quando mudar
+            await window.i18n.init();
+            window.i18n.onChange(() => this.refreshTranslations());
+
             // Mostrar loader principal
             this.showMainLoader();
             
@@ -33,7 +39,7 @@ class MuDMG {
             // Mostrar status inicial
             this.handleUpdateProgress({
                 type: 'ready',
-                message: 'Initializing launcher...'
+                key: 'status.initializing'
             });
             
             // Verificar atualizações automaticamente
@@ -50,7 +56,7 @@ class MuDMG {
             });
         } catch (error) {
             console.error('Failed to initialize:', error);
-            this.showNotification('Failed to initialize AsgardMU: ' + error.message, 'error');
+            this.showNotification(this.t('notify.initFailed', { error: error.message }), 'error');
         }
     }
 
@@ -146,7 +152,7 @@ class MuDMG {
     }
 
     loadWebContent() {
-        const webview = document.getElementById('newsWebview');
+        const webview = document.getElementById('newWebview');
         const loadingSpinner = document.getElementById('webLoading');
         const errorState = document.getElementById('webError');
         
@@ -168,6 +174,8 @@ class MuDMG {
         });
 
         webview.addEventListener('did-fail-load', (event) => {
+            // Ignorar falhas de iframes e navegacoes canceladas (ERR_ABORTED)
+            if (!event.isMainFrame || event.errorCode === -3) return;
             console.error('Webview failed to load:', event);
             loadingSpinner.style.display = 'none';
             errorState.style.display = 'flex';
@@ -178,9 +186,16 @@ class MuDMG {
             }, 1000);
         });
 
-        webview.addEventListener('did-start-loading', () => {
+        // Mostrar spinner apenas em navegacoes da pagina principal
+        // (did-start-loading tambem dispara para iframes e nunca era escondido)
+        webview.addEventListener('did-start-navigation', (event) => {
+            if (!event.isMainFrame || event.isInPlace) return;
             loadingSpinner.style.display = 'flex';
             errorState.style.display = 'none';
+        });
+
+        webview.addEventListener('did-stop-loading', () => {
+            loadingSpinner.style.display = 'none';
         });
 
         // Carregar URL do launcher usando a configuração centralizada
@@ -210,7 +225,7 @@ class MuDMG {
                 console.log('Game data is being installed, waiting...');
                 this.handleUpdateProgress({
                     type: 'waiting',
-                    message: 'Aguardando download do cliente...'
+                    key: 'status.waitingClient'
                 });
                 
                 // Tentar novamente em 5 segundos
@@ -225,7 +240,7 @@ class MuDMG {
                 console.log('Game data not installed, cannot check for updates');
                 this.handleUpdateProgress({
                     type: 'waiting',
-                    message: 'Aguardando instalação dos dados do jogo...'
+                    key: 'status.waitingData'
                 });
                 
                 // Tentar novamente em 5 segundos
@@ -238,8 +253,7 @@ class MuDMG {
             // Dados instalados, pode verificar updates
             console.log('Game data ready, checking for updates...');
             this.handleUpdateProgress({
-                type: 'check',
-                message: 'Checking for updates...'
+                type: 'check'
             });
             
             // Obter o diretório correto do jogo
@@ -254,32 +268,33 @@ class MuDMG {
 
             if (result.success) {
                 if (result.filesNeedingUpdate > 0) {
-                    this.showNotification(`${result.filesNeedingUpdate} files need to be updated`, 'warning');
+                    this.showNotification(this.t('notify.filesNeedUpdate', { count: result.filesNeedingUpdate }), 'warning');
                     this.handleUpdateProgress({
                         type: 'ready',
-                        message: `${result.filesNeedingUpdate} files need update - Starting download...`
+                        key: 'status.filesNeedUpdate',
+                        params: { count: result.filesNeedingUpdate }
                     });
                     this.startUpdate();
                 } else {
                     this.handleUpdateProgress({
                         type: 'ready',
-                        message: 'Game is up to date - Ready to play!'
+                        key: 'status.upToDate'
                     });
                     this.enablePlayButton();
                 }
             } else {
-                this.showNotification('Failed to check for updates', 'error');
+                this.showNotification(this.t('notify.checkFailed'), 'error');
                 this.handleUpdateProgress({
                     type: 'ready',
-                    message: 'Failed to check updates - Please try again'
+                    key: 'status.checkFailed'
                 });
             }
         } catch (error) {
             console.error('Update check failed:', error);
-            this.showNotification('Update check failed', 'error');
+            this.showNotification(this.t('notify.checkFailed'), 'error');
             this.handleUpdateProgress({
                 type: 'ready',
-                message: 'Update check failed - Please try again'
+                key: 'status.checkFailed'
             });
         }
     }
@@ -327,7 +342,7 @@ class MuDMG {
         if (playBtn) {
             // Sem limite de contas - botão sempre habilitado
             playBtn.disabled = false;
-            playBtn.title = 'Play Game';
+            playBtn.title = this.t('play');
         }
     }
 
@@ -348,7 +363,7 @@ class MuDMG {
         // Mostrar status inicial do update
         this.handleUpdateProgress({
             type: 'ready',
-            message: 'Starting update process...'
+            key: 'status.startingUpdate'
         });
 
         try {
@@ -363,25 +378,26 @@ class MuDMG {
             });
 
             if (result.success) {
-                this.showNotification('Update completed successfully', 'success');
+                this.showNotification(this.t('notify.updateDone'), 'success');
                 this.handleUpdateProgress({
                     type: 'ready',
-                    message: 'Update completed successfully - Ready to play!'
+                    key: 'status.updateDone'
                 });
                 this.enablePlayButton();
             } else {
-                this.showNotification(`Update failed: ${result.error}`, 'error');
+                this.showNotification(this.t('notify.updateFailedWith', { error: result.error }), 'error');
                 this.handleUpdateProgress({
                     type: 'ready',
-                    message: `Update failed: ${result.error} - Please try again`
+                    key: 'status.updateFailedWith',
+                    params: { error: result.error }
                 });
             }
         } catch (error) {
             console.error('Update failed:', error);
-            this.showNotification('Update failed', 'error');
+            this.showNotification(this.t('notify.updateFailed'), 'error');
             this.handleUpdateProgress({
                 type: 'ready',
-                message: 'Update failed - Please try again'
+                key: 'status.updateFailed'
             });
         } finally {
             this.isUpdating = false;
@@ -395,14 +411,14 @@ class MuDMG {
             case 'installing':
                 this.handleUpdateProgress({
                     type: 'waiting',
-                    message: stateData.message || 'Aguardando download do cliente...'
+                    key: 'status.waitingClient'
                 });
                 break;
                 
             case 'ready-for-update':
                 this.handleUpdateProgress({
                     type: 'ready',
-                    message: stateData.message || 'Dados do jogo prontos - verificando updates...'
+                    key: 'status.dataReady'
                 });
                 // Verificar updates quando dados estiverem prontos
                 setTimeout(() => {
@@ -413,7 +429,7 @@ class MuDMG {
             case 'error':
                 this.handleUpdateProgress({
                     type: 'error',
-                    message: stateData.message || 'Erro na instalação dos dados'
+                    key: 'status.dataError'
                 });
                 break;
         }
@@ -426,13 +442,11 @@ class MuDMG {
         const overallProgressFooter = document.getElementById('overallProgressFooter');
         const overallTextFooter = document.getElementById('overallTextFooter');
         const currentFileInfo = document.getElementById('currentFileInfo');
-        const statusText = currentFileInfo.querySelector('.status-text');
-
         if (!updateProgressFooter) return;
 
         switch (progress.type) {
             case 'manifest':
-                statusText.textContent = 'Downloading update manifest...';
+                this.setStatus('status.manifest');
                 // Reset progress bars
                 downloadProgressFooter.style.width = '0%';
                 downloadTextFooter.textContent = '0%';
@@ -440,7 +454,7 @@ class MuDMG {
                 overallTextFooter.textContent = '0%';
                 break;
             case 'check':
-                statusText.textContent = 'Checking for updates...';
+                this.setStatus('status.checking');
                 // Reset progress bars
                 downloadProgressFooter.style.width = '0%';
                 downloadTextFooter.textContent = '0%';
@@ -448,7 +462,7 @@ class MuDMG {
                 overallTextFooter.textContent = '0%';
                 break;
             case 'download':
-                statusText.textContent = `Downloading ${progress.current} of ${progress.total} files`;
+                this.setStatus('status.downloadingFiles', { current: progress.current, total: progress.total });
                 // Verificar se total é válido para evitar NaN
                 if (progress.total && progress.total > 0) {
                     const overallPercent = Math.round((progress.current / progress.total) * 100);
@@ -463,19 +477,76 @@ class MuDMG {
             case 'download-progress':
                 downloadProgressFooter.style.width = `${progress.progress}%`;
                 downloadTextFooter.textContent = `${progress.progress}%`;
-                statusText.textContent = `Downloading: ${progress.file || 'file'}`;
+                this.setStatus('status.downloadingFile', { file: progress.file || this.t('status.file') });
                 break;
             case 'verify':
-                statusText.textContent = 'Verifying downloaded files...';
+                this.setStatus('status.verifying');
                 // Não alterar a barra overall durante verificação
                 break;
             case 'ready':
-                statusText.textContent = progress.message || 'Ready to play';
+                this.setStatus(progress.key || 'status.ready', progress.params);
                 downloadProgressFooter.style.width = '100%';
                 downloadTextFooter.textContent = '100%';
                 overallProgressFooter.style.width = '100%';
                 overallTextFooter.textContent = '100%';
                 break;
+            case 'waiting':
+            case 'error':
+                this.setStatus(progress.key, progress.params);
+                break;
+        }
+    }
+
+    t(key, params) {
+        return window.i18n.t(key, params);
+    }
+
+    // Atualiza o texto de status do rodapé guardando a chave para retraduzir
+    setStatus(key, params) {
+        this.lastStatus = { key, params };
+        const statusText = document.querySelector('#currentFileInfo .status-text');
+        if (statusText) {
+            statusText.textContent = this.t(key, params);
+        }
+    }
+
+    // Chamado quando o usuário salva um novo idioma
+    refreshTranslations() {
+        if (this.lastStatus) {
+            this.setStatus(this.lastStatus.key, this.lastStatus.params);
+        }
+        if (this.lastDataProgress) {
+            const currentStatus = document.getElementById('currentStatusText');
+            if (currentStatus) currentStatus.textContent = this.getDataProgressText(this.lastDataProgress);
+        }
+        this.updatePlayButtonState();
+    }
+
+    // Texto traduzido para os eventos de progresso da instalação dos dados (data-manager)
+    getDataProgressText(progress) {
+        switch (progress.type) {
+            case 'download-start':
+                return this.t('data.downloadStart');
+            case 'download-progress':
+                return this.t('data.downloading', { progress: progress.progress || 0 });
+            case 'download-complete':
+                return this.t('data.downloadDone');
+            case 'extract-start':
+                return this.t('data.extractStart');
+            case 'extract-progress':
+                return this.t('data.extracting', { progress: progress.progress || 0 });
+            case 'extract-complete':
+                return this.t('data.extractDone');
+            case 'installation-complete':
+            case 'success':
+                return this.t('data.installed');
+            case 'data-exists':
+                return this.t('data.exists');
+            case 'installation-error':
+            case 'error':
+                return this.t('data.error', { error: progress.error || progress.message || '' });
+            default:
+                return progress.message || this.t('data.processing');
         }
     }
 
@@ -488,16 +559,16 @@ class MuDMG {
             
             if (result.success) {
                 console.log('Game launch successful');
-                this.showNotification('Launching game...', 'success');
+                this.showNotification(this.t('notify.launching'), 'success');
                 // Esconder loader principal ao lançar jogo
                 this.hideMainLoader();
             } else {
                 console.error('Game launch failed:', result.error);
-                this.showNotification(`Failed to launch game: ${result.error}`, 'error');
+                this.showNotification(this.t('notify.launchFailedWith', { error: result.error }), 'error');
             }
         } catch (error) {
             console.error('Exception during game launch:', error);
-            this.showNotification('Failed to launch game', 'error');
+            this.showNotification(this.t('notify.launchFailed'), 'error');
         }
     }
 
@@ -621,7 +692,7 @@ class MuDMG {
                 this.updateDataInstallationModal(progress);
                 setTimeout(() => {
                     this.hideDataInstallationModal();
-                    this.showNotification(progress.message, 'success');
+                    this.showNotification(this.getDataProgressText(progress), 'success');
                 }, 2000);
                 this.enablePlayButton();
                 break;
@@ -629,7 +700,7 @@ class MuDMG {
             case 'data-exists':
                 this.handleUpdateProgress({
                     type: 'ready',
-                    message: progress.message
+                    key: 'data.exists'
                 });
                 this.enablePlayButton();
                 break;
@@ -639,7 +710,7 @@ class MuDMG {
                 this.updateDataInstallationModal(progress);
                 setTimeout(() => {
                     this.hideDataInstallationModal();
-                    this.showNotification(progress.message, 'error');
+                    this.showNotification(this.getDataProgressText(progress), 'error');
                 }, 3000);
                 break;
                 
@@ -672,8 +743,9 @@ class MuDMG {
         const downloadSection = document.getElementById('downloadProgressSection');
         const currentStatus = document.getElementById('currentStatusText');
 
+        this.lastDataProgress = progress;
         if (currentStatus) {
-            currentStatus.textContent = progress.message || 'Processando...';
+            currentStatus.textContent = this.getDataProgressText(progress);
         }
 
         if (downloadSection) {

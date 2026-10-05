@@ -91,11 +91,11 @@ class SettingsManager {
                     window.muDMG.config = { ...window.muDMG.config, ...config };
                 }
             } else {
-                this.showNotification(`Failed to save settings: ${result.error}`, 'error');
+                this.showNotification(window.i18n.t('notify.settingsFailedWith', { error: result.error }), 'error');
             }
         } catch (error) {
             console.error('Failed to save settings:', error);
-            this.showNotification('Failed to save settings', 'error');
+            this.showNotification(window.i18n.t('notify.settingsFailed'), 'error');
         }
     }
 
