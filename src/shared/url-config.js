@@ -17,16 +17,24 @@ const URL_CONFIG = {
   // ===== ENDPOINTS DO LAUNCHER =====
   LAUNCHER: {
     // Página inicial do launcher (webview): https://asgardmu.com.br/news
-    MAIN: 'news',
-    
-    // API de atualização
-    UPDATE: 'api/update/update.json'
+    MAIN: 'news'
   },
-  
-  // ===== GITHUB RELEASES =====
+
+  // ===== PATCHES (Cloudflare R2) =====
+  // Bucket público servido em domínio próprio. Conteúdo = pasta gerada pelo update-creator:
+  //   update.json            -> manifesto (path, size, hash MD5)
+  //   <path do arquivo>      -> arquivos do jogo, na mesma estrutura de pastas do cliente
+  UPDATE: {
+    BASE_URL: 'https://updates.asgardmu.com.br/', // deve terminar com "/"
+    MANIFEST: 'update.json'
+  },
+
+  // ===== CLIENTE COMPLETO (GitHub Releases) =====
   GITHUB: {
     OWNER: 'AutomatosData', // Usuário do GitHub dono do repositório do jogo
     REPO: 'asgard-mu-client', // Nome do repositório do jogo
+    // Nome fixo do ZIP do cliente em todo release (permite usar /releases/latest/download)
+    CLIENT_ASSET: 'AsgardMU-Client.zip',
     // URL base para downloads de releases
     get RELEASES_URL() {
       return `https://api.github.com/repos/${this.OWNER}/${this.REPO}/releases`;
@@ -34,12 +42,13 @@ const URL_CONFIG = {
     // URL para download de assets de um release específico
     getAssetDownloadUrl(tag, assetName) {
       return `https://github.com/${this.OWNER}/${this.REPO}/releases/download/${tag}/${assetName}`;
+    },
+    // URL do ZIP do cliente no release mais recente
+    get CLIENT_DOWNLOAD_URL() {
+      return `https://github.com/${this.OWNER}/${this.REPO}/releases/latest/download/${this.CLIENT_ASSET}`;
     }
   },
-  
-  // ===== GITHUB DOWNLOAD (legado) =====
-  GITHUB_DOWNLOAD: 'https://github.com/AsgardMU.zip',
-  
+
   // ===== CDN EXTERNOS =====
   CDN: {
     // Font Awesome (ícones)
@@ -52,8 +61,17 @@ const URL_CONFIG = {
   },
   
   
+  // Base dos patches (pasta onde ficam update.json e os arquivos)
   get UPDATE_URL() {
-    return `${this.BASE_URL}${this.LAUNCHER.UPDATE}`;
+    return this.UPDATE.BASE_URL;
+  },
+
+  get UPDATE_MANIFEST_URL() {
+    return `${this.UPDATE.BASE_URL}${this.UPDATE.MANIFEST}`;
+  },
+
+  get CLIENT_DOWNLOAD_URL() {
+    return this.GITHUB.CLIENT_DOWNLOAD_URL;
   },
   
   // ===== FUNÇÕES AUXILIARES =====

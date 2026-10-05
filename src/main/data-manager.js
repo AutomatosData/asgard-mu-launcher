@@ -8,7 +8,7 @@ const URL_CONFIG = require('../shared/url-config');
 
 class DataManager {
     constructor() {
-        this.dataUrl = URL_CONFIG.GITHUB_DOWNLOAD;
+        this.dataUrl = URL_CONFIG.CLIENT_DOWNLOAD_URL;
         this.zipFileName = 'MUDMG.zip';
     }
 

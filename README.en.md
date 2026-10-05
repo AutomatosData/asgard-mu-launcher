@@ -143,28 +143,87 @@ Edit the file **`src/shared/url-config.js`** to configure:
 
 ```javascript
 const URL_CONFIG = {
-  // Your server/website URL (must end with "/")
+  // Website shown in the start screen webview (hosted on Vercel)
   BASE_URL: 'https://asgardmu.com.br/',
-
-  // ===== GAME CONFIGURATION (developer only) =====
-  GAME_EXECUTABLE: 'main.exe',
-
-  // Launcher endpoints (relative to BASE_URL)
   LAUNCHER: {
-    MAIN: 'news',                     // Start screen page shown in the webview
-    UPDATE: 'api/update/update.json'  // Update API
+    MAIN: 'news'                     // Start screen page → https://asgardmu.com.br/news
   },
 
-  // Full game client URL on GitHub (or other host)
-  GITHUB_DOWNLOAD: 'https://github.com/user/project/releases/download/v1.0/Client.zip',
+  // Game patches (Cloudflare R2 bucket on a custom domain)
+  UPDATE: {
+    BASE_URL: 'https://updates.asgardmu.com.br/', // must end with "/"
+    MANIFEST: 'update.json'
+  },
+
+  // Full game client (GitHub Releases)
+  GITHUB: {
+    OWNER: 'AutomatosData',
+    REPO: 'asgard-mu-client',
+    CLIENT_ASSET: 'AsgardMU-Client.zip'
+  },
+
+  GAME_EXECUTABLE: 'main.exe',
 };
 ```
 
-** Important:**
-- `BASE_URL`: Your website/server URL (keep the trailing `/`)
-- `GITHUB_DOWNLOAD`: Direct URL to full client ZIP file
-- **Start screen:** when the launcher opens, the webview loads `${BASE_URL}${LAUNCHER.MAIN}` → **https://asgardmu.com.br/news**. To show another page, change only `LAUNCHER.MAIN`.
-- Update system will check `${BASE_URL}${LAUNCHER.UPDATE}` → `https://asgardmu.com.br/api/update/update.json`
+**Where each URL points:**
+
+| What | URL | Hosted on |
+|---|---|---|
+| Start screen (webview) | `https://asgardmu.com.br/news` | Vercel (website) |
+| Patch manifest | `https://updates.asgardmu.com.br/update.json` | Cloudflare R2 |
+| Patch files | `https://updates.asgardmu.com.br/<file path>?v=<md5>` | Cloudflare R2 |
+| Full client (first install) | `https://github.com/AutomatosData/asgard-mu-client/releases/latest/download/AsgardMU-Client.zip` | GitHub Releases |
+
+- To show another page on the start screen, change only `LAUNCHER.MAIN`.
+- The manifest is always requested with a `?t=<timestamp>` query so the Cloudflare cache never serves an old one; files use `?v=<md5>` so a patch that overwrites a file is never served stale.
+- If the manifest can't be downloaded, the launcher skips the update and lets the player start the game (the error goes to `Data/Launcher/Logs/update.log`).
+
+---
+
+## Distributing the Game
+
+Game files are **not** hosted on Vercel (the free plan has limited bandwidth and no FTP). They are split in two:
+
+### Full client → GitHub Releases
+
+Used once, on first install (`src/main/data-manager.js` downloads and extracts the ZIP next to the launcher).
+
+```powershell
+.\create-github-release.ps1 -Version "v1.0.0" -GamePath "C:\path\to\game"
+```
+
+- Packs `Data`, `main.exe` and `Settings.ini` (edit `$itemsToInclude` in the script) into `AsgardMU-Client.zip` and publishes it as the latest release of `AutomatosData/asgard-mu-client`.
+- The asset name must always be `AsgardMU-Client.zip` (same as `GITHUB.CLIENT_ASSET`), so the `/releases/latest/download/` link keeps working.
+- Requires the GitHub CLI (`gh`) logged in with write access to the repository. Max 2 GB per file.
+
+### Patches → Cloudflare R2
+
+Used on every launcher start: the launcher compares local files with `update.json` (size + MD5) and downloads only what changed.
+
+**One-time setup:**
+
+1. Cloudflare dashboard → **R2** → create the bucket `asgard-mu-updates`.
+2. Bucket → **Settings** → **Custom Domains** → add `updates.asgardmu.com.br` (the DNS is already on Cloudflare, so the record is created automatically).
+3. R2 → **Manage API Tokens** → create a token with *Object Read & Write* for that bucket and note the *Access Key ID*, *Secret Access Key* and the account endpoint (`https://<account_id>.r2.cloudflarestorage.com`).
+4. Install rclone and create the remote `r2`:
+   ```powershell
+   winget install Rclone.Rclone
+   rclone config create r2 s3 provider=Cloudflare access_key_id=<KEY_ID> secret_access_key=<SECRET> endpoint=https://<account_id>.r2.cloudflarestorage.com acl=private
+   ```
+
+**Publishing a patch:**
+
+1. Open the **update-creator** (`update-creator/`), select the game folder and click create. It writes the `update` folder (`update.json` + files, keeping the folder structure).
+2. Upload it:
+   ```powershell
+   .\publish-update.ps1 -Source "C:\path\to\update"          # upload new/changed files
+   .\publish-update.ps1 -Source "C:\path\to\update" -DryRun  # only show what would be sent
+   .\publish-update.ps1 -Source "C:\path\to\update" -Prune   # also delete files removed from the patch
+   ```
+   The script validates the manifest, uploads the files first and `update.json` last, so players never get a manifest pointing to files that are not uploaded yet.
+
+R2 free tier: 10 GB of storage and no egress (download) fees.
 
 ---
 
@@ -178,6 +237,8 @@ const URL_CONFIG = {
 | `npm run build:win` | Build for Windows (without publishing) |
 | `npm run pack-win` | Quick packaging for Windows |
 | `.\build.ps1` | Clean and optimized build (recommended) |
+| `.\create-github-release.ps1` | Publish the full game client to GitHub Releases |
+| `.\publish-update.ps1` | Publish a game patch to Cloudflare R2 |
 
 ---
 

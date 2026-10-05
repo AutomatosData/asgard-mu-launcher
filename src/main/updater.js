@@ -61,11 +61,25 @@ class Updater {
     }
   }
 
+  // serverUrl = base dos patches (pasta que contém update.json e os arquivos)
+  normalizeBaseUrl(serverUrl) {
+    const base = serverUrl || URL_CONFIG.UPDATE_URL;
+    return base.endsWith('/') ? base : `${base}/`;
+  }
+
+  // URL de um arquivo do manifest. "?v=hash" evita que o cache da Cloudflare
+  // entregue a versão antiga quando um patch sobrescreve o mesmo caminho.
+  getFileUrl(file) {
+    const encodedPath = file.path.split('/').map(encodeURIComponent).join('/');
+    return `${this.serverUrl}${encodedPath}?v=${file.hash}`;
+  }
+
   async downloadManifest(serverUrl, gamePath) {
     try {
-      // Tentar baixar do servidor atual primeiro
-      const response = await axios.get(`${serverUrl}/update.json`, {
-        timeout: 10000
+      const baseUrl = this.normalizeBaseUrl(serverUrl);
+      const response = await axios.get(`${baseUrl}${URL_CONFIG.UPDATE.MANIFEST}`, {
+        timeout: 10000,
+        params: { t: Date.now() } // sempre buscar o manifest mais recente (sem cache)
       });
       
       let filesArray;
@@ -78,47 +92,14 @@ class Updater {
       }
       
       this.manifest = { files: filesArray };
-      this.serverUrl = serverUrl;
+      this.serverUrl = baseUrl;
       
       return { success: true, manifest: this.manifest, source: 'server' };
     } catch (error) {
       this.logUpdateEvent('error', `Failed to download manifest from server: ${error.message}`);
       
-      // Fallback: tentar GitHub Releases
-      try {
-        this.logUpdateEvent('info', 'Trying GitHub Releases as fallback...');
-        const githubResponse = await axios.get(URL_CONFIG.GITHUB.RELEASES_URL, {
-          timeout: 10000,
-          headers: {
-            'Accept': 'application/vnd.github.v3+json'
-          }
-        });
-        
-        if (githubResponse.data && githubResponse.data.length > 0) {
-          const latestRelease = githubResponse.data[0];
-          this.logUpdateEvent('info', `Found latest release: ${latestRelease.tag_name}`);
-          
-          // Converter assets do GitHub para formato de manifest
-          const filesArray = latestRelease.assets.map(asset => ({
-            path: asset.name,
-            hash: asset.name, // GitHub não fornece hash, usar nome como placeholder
-            size: asset.size,
-            url: asset.browser_download_url
-          }));
-          
-          this.manifest = { 
-            files: filesArray,
-            version: latestRelease.tag_name,
-            releaseNotes: latestRelease.body
-          };
-          this.serverUrl = URL_CONFIG.GITHUB.RELEASES_URL;
-          
-          return { success: true, manifest: this.manifest, source: 'github' };
-        }
-      } catch (githubError) {
-        this.logUpdateEvent('error', `Failed to download from GitHub: ${githubError.message}`);
-      }
-      
+      // Sem manifest: segue sem atualizar. O cliente completo (GitHub Releases)
+      // é instalado pelo DataManager, não por aqui.
       this.manifest = { files: [] };
       return { success: true, manifest: this.manifest, source: 'none' };
     }
@@ -195,7 +176,7 @@ class Updater {
 
       const response = await axios({
         method: 'GET',
-        url: `${this.serverUrl}/api/update/files/${file.path}`,
+        url: this.getFileUrl(file),
         responseType: 'stream',
         timeout: 30000
       });
