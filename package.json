@@ -1,7 +1,7 @@
 {
-  "name": "muonline",
+  "name": "AsgardMU",
   "version": "1.0.0",
-  "description": "MU Online - Advanced Launcher",
+  "description": "AsgardMU - Advanced Launcher",
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
@@ -10,18 +10,18 @@
     "build:win": "electron-builder --win --dir --publish=never",
     "pack": "electron-builder --dir",
     "dist": "electron-builder --publish=never",
-    "pack-win": "npx electron-packager . MUOnline --platform=win32 --arch=x64 --out=dist --overwrite",
-    "pack-win-npx": "npx electron-packager . MUOnline --platform=win32 --arch=x64 --out=dist --overwrite",
+    "pack-win": "npx electron-packager . AsgardMU --platform=win32 --arch=x64 --out=dist --overwrite",
+    "pack-win-npx": "npx electron-packager . AsgardMU --platform=win32 --arch=x64 --out=dist --overwrite",
     "postinstall": "electron-builder install-app-deps"
   },
   "keywords": [
     "mu-online",
-    "muonline",
+    "AsgardMU",
     "launcher",
     "electron",
     "game"
   ],
-  "author": "MU Online Team",
+  "author": "AsgardMU Team",
   "license": "MIT",
   "devDependencies": {
     "@electron/packager": "^18.4.4",
@@ -52,8 +52,8 @@
     "p-try": "^3.0.0"
   },
   "build": {
-    "appId": "muonline.app",
-    "productName": "MU Online",
+    "appId": "AsgardMU.app",
+    "productName": "AsgardMU",
     "directories": {
       "output": "dist"
     },
@@ -84,9 +84,9 @@
     "publish": null,
     "win": {
       "target": "dir",
-      "sign": false,
+      "signAndEditExecutable": false,
       "icon": "src/renderer/assets/icon.ico",
-      "executableName": "MUOnline"
+      "executableName": "AsgardMU"
     },
     "mac": {
       "icon": "icon.ico"

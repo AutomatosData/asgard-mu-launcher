@@ -63,6 +63,7 @@ class Updater {
 
   async downloadManifest(serverUrl, gamePath) {
     try {
+      // Tentar baixar do servidor atual primeiro
       const response = await axios.get(`${serverUrl}/update.json`, {
         timeout: 10000
       });
@@ -81,7 +82,42 @@ class Updater {
       
       return { success: true, manifest: this.manifest, source: 'server' };
     } catch (error) {
-      this.logUpdateEvent('error', `Failed to download manifest: ${error.message}`);
+      this.logUpdateEvent('error', `Failed to download manifest from server: ${error.message}`);
+      
+      // Fallback: tentar GitHub Releases
+      try {
+        this.logUpdateEvent('info', 'Trying GitHub Releases as fallback...');
+        const githubResponse = await axios.get(URL_CONFIG.GITHUB.RELEASES_URL, {
+          timeout: 10000,
+          headers: {
+            'Accept': 'application/vnd.github.v3+json'
+          }
+        });
+        
+        if (githubResponse.data && githubResponse.data.length > 0) {
+          const latestRelease = githubResponse.data[0];
+          this.logUpdateEvent('info', `Found latest release: ${latestRelease.tag_name}`);
+          
+          // Converter assets do GitHub para formato de manifest
+          const filesArray = latestRelease.assets.map(asset => ({
+            path: asset.name,
+            hash: asset.name, // GitHub não fornece hash, usar nome como placeholder
+            size: asset.size,
+            url: asset.browser_download_url
+          }));
+          
+          this.manifest = { 
+            files: filesArray,
+            version: latestRelease.tag_name,
+            releaseNotes: latestRelease.body
+          };
+          this.serverUrl = URL_CONFIG.GITHUB.RELEASES_URL;
+          
+          return { success: true, manifest: this.manifest, source: 'github' };
+        }
+      } catch (githubError) {
+        this.logUpdateEvent('error', `Failed to download from GitHub: ${githubError.message}`);
+      }
       
       this.manifest = { files: [] };
       return { success: true, manifest: this.manifest, source: 'none' };
@@ -159,7 +195,7 @@ class Updater {
 
       const response = await axios({
         method: 'GET',
-        url: `${this.serverUrl}/${file.path}`,
+        url: `${this.serverUrl}/api/update/files/${file.path}`,
         responseType: 'stream',
         timeout: 30000
       });

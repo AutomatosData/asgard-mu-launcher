@@ -8,7 +8,7 @@ class MuDMG {
         this.config = {};
         this.isUpdating = false;
         this.connectedAccounts = 0;
-        this.maxAccounts = 3;
+        this.maxAccounts = Infinity; // Sem limite de contas
         this.accountCheckInterval = null;
         this.init();
     }
@@ -50,7 +50,7 @@ class MuDMG {
             });
         } catch (error) {
             console.error('Failed to initialize:', error);
-            this.showNotification('Failed to initialize MU Online: ' + error.message, 'error');
+            this.showNotification('Failed to initialize AsgardMU: ' + error.message, 'error');
         }
     }
 
@@ -317,25 +317,17 @@ class MuDMG {
         }
         
         if (counterContainer) {
-            // Adicionar classe quando limite atingido
-            if (this.connectedAccounts >= this.maxAccounts) {
-                counterContainer.classList.add('limit-reached');
-            } else {
-                counterContainer.classList.remove('limit-reached');
-            }
+            // Sem limite - remover classe de limite atingido
+            counterContainer.classList.remove('limit-reached');
         }
     }
 
     updatePlayButtonState() {
         const playBtn = document.getElementById('playBtn');
         if (playBtn) {
-            if (this.connectedAccounts >= this.maxAccounts) {
-                playBtn.disabled = true;
-                playBtn.title = `Limite de ${this.maxAccounts} contas atingido`;
-            } else {
-                playBtn.disabled = false;
-                playBtn.title = 'Play Game';
-            }
+            // Sem limite de contas - botão sempre habilitado
+            playBtn.disabled = false;
+            playBtn.title = 'Play Game';
         }
     }
 
@@ -497,6 +489,8 @@ class MuDMG {
             if (result.success) {
                 console.log('Game launch successful');
                 this.showNotification('Launching game...', 'success');
+                // Esconder loader principal ao lançar jogo
+                this.hideMainLoader();
             } else {
                 console.error('Game launch failed:', result.error);
                 this.showNotification(`Failed to launch game: ${result.error}`, 'error');
@@ -510,20 +504,25 @@ class MuDMG {
     async openSettings() {
         const settingsBtn = document.getElementById('settingsBtn');
         const modal = document.getElementById('settingsModal');
-        
+
         if (modal) {
             this.resetSettingsModal();
-            
+
             await this.loadConfig();
-            
+
             if (window.settingsManager && window.settingsManager.loadSettingsToForm) {
                 await window.settingsManager.loadSettingsToForm(this.config);
             } else {
             }
-            
+
+            // Reload game settings from LauncherOption.if
+            if (window.gameSettings && window.gameSettings.reloadSettings) {
+                await window.gameSettings.reloadSettings();
+            }
+
             setTimeout(() => {
                 modal.classList.add('show');
-                
+
                 setTimeout(() => {
                     const isVisible = modal.classList.contains('show');
                     if (!isVisible) {
@@ -740,7 +739,7 @@ class MuDMG {
 
     cleanup() {
         this.stopAccountMonitoring();
-        console.log('MU Online cleanup completed');
+        console.log('AsgardMU cleanup completed');
     }
 }
 

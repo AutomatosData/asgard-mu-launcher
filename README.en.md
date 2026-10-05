@@ -1,4 +1,4 @@
-# MU Online - Advanced Launcher
+# AsgardMU - Advanced Launcher
 
 ## Build Prerequisites (Windows)
 
@@ -97,21 +97,21 @@ This script will:
 - Remove unnecessary files (~150 MB final)
 - Optimize locales (keep only en-US)
 
-**Final executable**: `dist-limpo\MUOnline-win32-x64\MUOnline.exe`
+**Final executable**: `dist-limpo\AsgardMU-win32-x64\AsgardMU.exe`
 
 #### Option B: Default Build with Electron Builder
 ```powershell
 npm run build:win
 ```
 
-**Final executable**: `dist\win-unpacked\MUOnline.exe`
+**Final executable**: `dist\win-unpacked\AsgardMU.exe`
 
 #### Option C: Build with Electron Packager
 ```powershell
 npm run pack-win
 ```
 
-**Final executable**: `dist\MUOnline-win32-x64\MUOnline.exe`
+**Final executable**: `dist\AsgardMU-win32-x64\AsgardMU.exe`
 
 ---
 
@@ -121,8 +121,8 @@ After building with `.\build.ps1`, you'll have:
 
 ```
 dist-limpo/
-└── MUOnline-win32-x64/
-    ├── MUOnline.exe           # Main executable
+└── AsgardMU-win32-x64/
+    ├── AsgardMU.exe           # Main executable
     ├── resources/
     │   └── app.asar           # Application code (obfuscated)
     ├── locales/
@@ -143,30 +143,28 @@ Edit the file **`src/shared/url-config.js`** to configure:
 
 ```javascript
 const URL_CONFIG = {
-  // Your server/website URL (where CMS is hosted)
-  BASE_URL: 'http://localhost/cms_new',
-  
-  // Full game client URL on GitHub (or other host)
-  GITHUB_DOWNLOAD: 'https://github.com/user/project/releases/download/v1.0/Client.zip',
-  
-  // Launcher endpoints
-  LAUNCHER: {
-    MAIN: '/launcher',      // Main webview page
-    UPDATE: '/update'       // Update API
-  }
+  // Your server/website URL (must end with "/")
+  BASE_URL: 'https://asgardmu.com.br/',
 
   // ===== GAME CONFIGURATION (developer only) =====
-  /** Name of the game executable (e.g., main.exe). Change this here if the client uses another .exe */
   GAME_EXECUTABLE: 'main.exe',
 
+  // Launcher endpoints (relative to BASE_URL)
+  LAUNCHER: {
+    MAIN: 'news',                     // Start screen page shown in the webview
+    UPDATE: 'api/update/update.json'  // Update API
+  },
+
+  // Full game client URL on GitHub (or other host)
+  GITHUB_DOWNLOAD: 'https://github.com/user/project/releases/download/v1.0/Client.zip',
 };
 ```
 
 ** Important:**
-- `BASE_URL`: Your website/server URL where CMS is hosted
+- `BASE_URL`: Your website/server URL (keep the trailing `/`)
 - `GITHUB_DOWNLOAD`: Direct URL to full client ZIP file
-- Launcher will load `${BASE_URL}/launcher` in webview
-- Update system will check `${BASE_URL}/update`
+- **Start screen:** when the launcher opens, the webview loads `${BASE_URL}${LAUNCHER.MAIN}` → **https://asgardmu.com.br/news**. To show another page, change only `LAUNCHER.MAIN`.
+- Update system will check `${BASE_URL}${LAUNCHER.UPDATE}` → `https://asgardmu.com.br/api/update/update.json`
 
 ---
 

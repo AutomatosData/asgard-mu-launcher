@@ -54,6 +54,20 @@ try {
   };
 }
 
+let LauncherOptionManager;
+try {
+  LauncherOptionManager = require(path.join(__dirname, 'launcher-option-manager'));
+} catch (error) {
+  console.error('Error importing launcher-option-manager:', error);
+  LauncherOptionManager = class {
+    constructor() {
+      console.log('Launcher Option Manager not available, using fallback');
+    }
+    async readLauncherOptions() { return {}; }
+    async writeLauncherOptions() { return false; }
+  };
+}
+
 const isDev = !app.isPackaged || process.env.NODE_ENV === 'development';
 
 function resolveAsset(assetName) {
@@ -80,6 +94,8 @@ let registryManager;
 let windowDetector;
 
 let dataManager;
+
+let launcherOptionManager;
 
 const URL_CONFIG = require('../shared/url-config');
 
@@ -253,7 +269,7 @@ function createWindow() {
 
   mainWindow.on('close', (event) => {
     isQuiting = true;
-    killAllGameProcesses();
+    // Não fechar game processes automaticamente - deixar o jogo rodar
     app.quit();
   });
 
@@ -275,7 +291,7 @@ function createTray() {
   const trayIcon = icon.resize({ width: 16, height: 16 });
   
   tray = new Tray(trayIcon);
-  tray.setToolTip('MU Online');
+  tray.setToolTip('AsgardMU');
   
   const contextMenu = Menu.buildFromTemplate([
     {
@@ -300,7 +316,7 @@ function createTray() {
       label: 'Quit',
       click: () => {
         isQuiting = true;
-        killAllGameProcesses();
+        // Não fechar game processes automaticamente - deixar o jogo rodar
         app.quit();
       }
     }
@@ -319,8 +335,8 @@ function createTray() {
 function showMinimizeNotification() {
   if (tray) {
     tray.displayBalloon({
-      title: 'MU Online',
-      content: 'MU Online minimized to system tray',
+      title: 'AsgardMU',
+      content: 'AsgardMU minimized to system tray',
       icon: resolveAsset('icon.ico')
     });
   }
@@ -351,7 +367,18 @@ app.whenReady().then(() => {
   
   dataManager = new DataManager();
   
-  checkAndInstallGameData();
+  launcherOptionManager = new LauncherOptionManager();
+  
+  // Verificar atualizações sem bloquear o launcher
+  console.log('[Main] Checking for updates...');
+  checkAndInstallGameData().catch(err => {
+    console.log('[Main] Update check failed, continuing normally:', err.message);
+    logEvent('warning', `Update check failed: ${err.message}`);
+    // Continuar normalmente mesmo se falhar
+    gameDataState.isInstalled = true;
+    gameDataState.canUpdate = true;
+    gameDataState.isInstalling = false;
+  });
   
   createWindow();
   createTray();
@@ -375,7 +402,7 @@ app.on('before-quit', (event) => {
     windowDetector.stopMonitoring();
   }
   
-  killAllGameProcesses();
+  // Não fechar game processes automaticamente - deixar o jogo rodar
 });
 
 ipcMain.handle('get-game-settings', async () => {
@@ -394,6 +421,38 @@ ipcMain.handle('save-game-settings', async (event, settings) => {
     return { success };
   } catch (error) {
     console.error('Failed to save game settings:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('get-launcher-options', async () => {
+  try {
+    if (!launcherOptionManager) {
+      return { success: false, error: 'LauncherOptionManager not initialized' };
+    }
+    
+    const options = await launcherOptionManager.readLauncherOptions();
+    const gameSettings = launcherOptionManager.convertToGameSettings(options);
+    
+    return { success: true, settings: gameSettings };
+  } catch (error) {
+    console.error('Failed to get launcher options:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('save-launcher-options', async (event, settings) => {
+  try {
+    if (!launcherOptionManager) {
+      return { success: false, error: 'LauncherOptionManager not initialized' };
+    }
+    
+    const launcherOptions = launcherOptionManager.convertFromGameSettings(settings);
+    const success = await launcherOptionManager.writeLauncherOptions(launcherOptions);
+    
+    return { success };
+  } catch (error) {
+    console.error('Failed to save launcher options:', error);
     return { success: false, error: error.message };
   }
 });
@@ -662,7 +721,7 @@ ipcMain.handle('minimize-to-tray', () => {
 
 ipcMain.handle('close-app', () => {
   isQuiting = true;
-  killAllGameProcesses();
+  // Não fechar game processes automaticamente - deixar o jogo rodar
   app.quit();
   return { success: true };
 });
@@ -815,11 +874,15 @@ ipcMain.handle('launch-game', async () => {
   try {
     const { spawn } = require('child_process');
 
-    const gameProcess = spawn(gameExePath, [], {
+    // Usar shell true para evitar problemas de permissão EACCES
+    // Adicionar aspas ao redor do caminho se tiver espaços
+    const quotedPath = gameExePath.includes(' ') ? `"${gameExePath}"` : gameExePath;
+    const gameProcess = spawn(quotedPath, [], {
       cwd: launcherDir,
       detached: true,
       windowsHide: false,
-      env: process.env
+      env: process.env,
+      shell: true
     });
 
     gameProcesses.push(gameProcess);
@@ -918,83 +981,30 @@ async function checkAndInstallGameData() {
       return;
     }
 
-    console.log('[Main] Game data folder not found, starting download...');
-    logEvent('info', 'Game data folder not found, starting download...');
-
-    gameDataState.isInstalling = true;
-    gameDataState.canUpdate = false;
+    // Se não existe, não tentar baixar automaticamente - assumir que usuário vai colocar manualmente
+    console.log('[Main] Game data folder not found, skipping automatic download');
+    logEvent('info', 'Game data folder not found - user must install client manually');
+    
     gameDataState.isInstalled = false;
-
+    gameDataState.canUpdate = false;
+    gameDataState.isInstalling = false;
+    
     if (mainWindow) {
-      mainWindow.webContents.send('data-installation-progress', {
-        type: 'start',
-        message: 'Instalando dados do jogo pela primeira vez...'
-      });
-      
       mainWindow.webContents.send('game-data-state', {
-        type: 'installing',
-        message: 'Aguardando download do cliente...',
+        type: 'not-installed',
+        message: 'Cliente não encontrado - por favor instale o jogo',
         canUpdate: false,
-        isInstalling: true
+        isInstalling: false
       });
     }
-
-    await dataManager.ensureDataFolder((progress) => {
-      if (progress.type === 'download-start' || 
-          progress.type === 'download-complete' || 
-          progress.type === 'extract-start' || 
-          progress.type === 'extract-complete' ||
-          progress.type === 'installation-complete' ||
-          progress.type === 'installation-error') {
-        console.log(`[Main] Data installation: ${progress.type} - ${progress.message}`);
-        logEvent('info', `Data installation: ${progress.type} - ${progress.message}`);
-      }
-      
-      gameDataState.installationProgress = progress;
-      
-      if (mainWindow) {
-        mainWindow.webContents.send('data-installation-progress', progress);
-      }
-    });
-
-    console.log('[Main] Game data installed successfully!');
-    logEvent('info', 'Game data installation completed successfully');
-
-    gameDataState.isInstalling = false;
+  } catch (error) {
+    console.log('[Main] Error in checkAndInstallGameData:', error.message);
+    logEvent('error', `Error in checkAndInstallGameData: ${error.message}`);
+    
+    // Não bloquear o launcher em caso de erro
     gameDataState.isInstalled = true;
     gameDataState.canUpdate = true;
-    gameDataState.installationProgress = null;
-
-    if (mainWindow) {
-      mainWindow.webContents.send('game-data-state', {
-        type: 'ready-for-update',
-        message: 'Dados do jogo instalados - pode fazer update',
-        canUpdate: true,
-        isInstalling: false
-      });
-    }
-
-  } catch (error) {
-    console.error('[Main] Error during data installation:', error);
-    logEvent('error', `Game data installation failed: ${error.message}`);
-    
     gameDataState.isInstalling = false;
-    gameDataState.canUpdate = false;
-    gameDataState.installationProgress = null;
-    
-    if (mainWindow) {
-      mainWindow.webContents.send('data-installation-progress', {
-        type: 'error',
-        message: `Installation error: ${error.message}`
-      });
-      
-      mainWindow.webContents.send('game-data-state', {
-        type: 'error',
-        message: `Installation error: ${error.message}`,
-        canUpdate: false,
-        isInstalling: false
-      });
-    }
   }
 }
 
@@ -1027,4 +1037,4 @@ process.on('unhandledRejection', (reason) => {
   try { logEvent('error', `unhandledRejection: ${reason?.stack || reason}`); } catch {}
 });
 
-logEvent('info', 'MU Online started');
+logEvent('info', 'AsgardMU started');

@@ -126,7 +126,7 @@ echo Para usar: executables\update-creator\update-creator.exe
 echo.
 echo PROXIMOS PASSOS:
 echo -Execute o Update Creator
-echo -Selecione a pasta do jogo MU Online
+echo -Selecione a pasta do jogo AsgardMU
 echo -Gere o update automaticamente
 echo -Use com o sistema de launcher
 echo.

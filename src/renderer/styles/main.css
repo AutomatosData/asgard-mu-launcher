@@ -799,6 +799,8 @@ webview {
     grid-template-columns: 1fr 1fr;
     gap: 15px;
     align-content: start;
+    overflow-y: auto;
+    max-height: 100%;
 }
 
 /* Language tab uses full width */

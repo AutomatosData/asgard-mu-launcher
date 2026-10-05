@@ -2,19 +2,21 @@ class GameSettings {
     constructor() {
         this.registryPath = 'HKEY_CURRENT_USER\\Software\\Webzen\\Mu\\Config';
         this.resolutionMap = {
-            '640x480': 0,
             '800x600': 1,
             '1024x768': 2,
-            '1280x1024': 3,
-            '1366x768': 4,
+            '1150x900': 3,
+            '1280x768': 4,
+            '1280x1024': 6,
             '1440x900': 5,
-            '1600x900': 6,
+            '1600x900': 8,
             '1680x1050': 7,
-            '1920x1080': 8,
-            '1920x1200': 9,
-            '2500x1440': 10,
-            '2500x1600': 11,
-            '3840x2160': 12
+            '1680x1080': 10,
+            '1600x1200': 9,
+            '1920x1080': 11,
+            '1920x1200': 12,
+            '1920x1440': 13,
+            '2560x1440': 15,
+            'MAX': 0
         };
         
         this.init();
@@ -81,7 +83,7 @@ class GameSettings {
         try {
             // Load current registry values
             const settings = await this.getRegistrySettings();
-            
+
             // Apply settings to UI
             this.applySettingsToUI(settings);
         } catch (error) {
@@ -89,14 +91,18 @@ class GameSettings {
         }
     }
 
+    async reloadSettings() {
+        await this.loadCurrentSettings();
+    }
+
     async getRegistrySettings() {
         try {
             if (window.ipcRenderer) {
-                const result = await window.ipcRenderer.invoke('get-game-settings');
+                const result = await window.ipcRenderer.invoke('get-launcher-options');
                 if (result.success) {
                     return result.settings;
                 } else {
-                    console.error('Failed to get settings:', result.error);
+                    console.error('Failed to get launcher options:', result.error);
                     return this.getDefaultSettings();
                 }
             } else {
@@ -104,7 +110,7 @@ class GameSettings {
                 return this.getDefaultSettings();
             }
         } catch (error) {
-            console.error('Failed to read registry:', error);
+            console.error('Failed to read LauncherOption.if:', error);
             return this.getDefaultSettings();
         }
     }
@@ -116,7 +122,8 @@ class GameSettings {
             musicOnOFF: 1, // Music enabled
             soundOnOFF: 1, // Sound enabled
             volumeLevel: 10, // Max volume
-            langSelection: 'Eng' // English
+            langSelection: 'Eng', // English
+            ID: '' // Account ID
         };
     }
 
@@ -141,6 +148,10 @@ class GameSettings {
 
         if (musicCheckbox) musicCheckbox.checked = settings.musicOnOFF === 1;
         if (soundCheckbox) soundCheckbox.checked = settings.soundOnOFF === 1;
+
+        // Apply account ID
+        const accountIdInput = document.getElementById('accountId');
+        if (accountIdInput) accountIdInput.value = settings.ID || '';
 
         // Apply language
         const languageRadio = document.querySelector(`input[name="language"][value="${settings.langSelection}"]`);
@@ -203,6 +214,12 @@ class GameSettings {
             settings.volumeLevel = 10;
         }
 
+        // Account ID
+        const accountIdInput = document.getElementById('accountId');
+        if (accountIdInput) {
+            settings.ID = accountIdInput.value.substring(0, 10); // Limit to 10 chars
+        }
+
         // Language
         const selectedLanguage = document.querySelector('input[name="language"]:checked');
         if (selectedLanguage) {
@@ -214,9 +231,9 @@ class GameSettings {
 
     async applySettingsToRegistry(settings) {
         try {
-            // Use IPC to save settings to main process
+            // Use IPC to save settings to LauncherOption.if
             if (window.ipcRenderer) {
-                const result = await window.ipcRenderer.invoke('save-game-settings', settings);
+                const result = await window.ipcRenderer.invoke('save-launcher-options', settings);
                 if (!result.success) {
                     throw new Error(result.error || 'Failed to save settings');
                 }
@@ -226,7 +243,7 @@ class GameSettings {
                 return false;
             }
         } catch (error) {
-            console.error('Failed to apply settings to registry:', error);
+            console.error('Failed to apply settings to LauncherOption.if:', error);
             throw error;
         }
     }

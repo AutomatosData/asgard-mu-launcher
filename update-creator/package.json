@@ -1,7 +1,7 @@
 {
   "name": "update-creator",
   "version": "1.0.0",
-  "description": "MU Online Update Creator",
+  "description": "AsgardMU Update Creator",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -13,6 +13,6 @@
   },
   "dependencies": {
     "fs-extra": "^11.1.0",
-    "muonline": "file:.."
+    "AsgardMU": "file:.."
   }
 }

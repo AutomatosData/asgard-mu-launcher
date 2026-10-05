@@ -1,5 +1,5 @@
 /**
- * Configuração Centralizada de URLs - MU Online Launcher
+ * Configuração Centralizada de URLs - AsgardMU Launcher
  * 
  * Este arquivo centraliza todas as URLs utilizadas no launcher,
  * facilitando a manutenção e alteração de endpoints.
@@ -9,24 +9,36 @@
 
 const URL_CONFIG = {
   // ===== SERVIDOR PRINCIPAL =====
-  BASE_URL: 'http://localhost/',
+  BASE_URL: 'https://asgardmu.com.br/',
   
   // ===== CONFIGURAÇÃO DO JOGO (apenas desenvolvedor) =====
-  /** Nome do executável do jogo (ex: main.exe). Altere aqui se o cliente usar outro .exe */
   GAME_EXECUTABLE: 'main.exe',
 
   // ===== ENDPOINTS DO LAUNCHER =====
   LAUNCHER: {
-    // Página principal do launcher (webview)
-    MAIN: 'launcher',
-    
+    // Página inicial do launcher (webview): https://asgardmu.com.br/news
+    MAIN: 'news',
     
     // API de atualização
-    UPDATE: 'update'
+    UPDATE: 'api/update/update.json'
   },
   
-  // ===== GITHUB DOWNLOAD =====
-  GITHUB_DOWNLOAD: 'https://github.com/MUONLINE.zip',
+  // ===== GITHUB RELEASES =====
+  GITHUB: {
+    OWNER: 'seu-usuario', // Altere para seu usuário do GitHub
+    REPO: 'asgardmu-game', // Nome do repositório do jogo
+    // URL base para downloads de releases
+    get RELEASES_URL() {
+      return `https://api.github.com/repos/${this.OWNER}/${this.REPO}/releases`;
+    },
+    // URL para download de assets de um release específico
+    getAssetDownloadUrl(tag, assetName) {
+      return `https://github.com/${this.OWNER}/${this.REPO}/releases/download/${tag}/${assetName}`;
+    }
+  },
+  
+  // ===== GITHUB DOWNLOAD (legado) =====
+  GITHUB_DOWNLOAD: 'https://github.com/AsgardMU.zip',
   
   // ===== CDN EXTERNOS =====
   CDN: {
@@ -34,7 +46,7 @@ const URL_CONFIG = {
     FONT_AWESOME: 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css'
   },
   
-  // ===== URLS COMPLETAS (geradas automaticamente) =====
+  // ===== URLS COMPLETAS =====
   get LAUNCHER_URL() {
     return `${this.BASE_URL}${this.LAUNCHER.MAIN}`;
   },
@@ -56,7 +68,7 @@ const URL_CONFIG = {
     const urlParams = new URLSearchParams(params);
     const queryString = urlParams.toString();
     return queryString ? 
-      `${this.LAUNCHER_URL}&${queryString}` : 
+      `${this.LAUNCHER_URL}?${queryString}` : 
       this.LAUNCHER_URL;
   },
   

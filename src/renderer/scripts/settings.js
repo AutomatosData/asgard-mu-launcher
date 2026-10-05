@@ -26,8 +26,6 @@ class SettingsManager {
             this.browseGamePath();
         });
 
-        // Sistema de credenciais removido - agora usa Auto Login via xAccounts.ini
-
         // Close modal when clicking outside
         document.getElementById('settingsModal')?.addEventListener('click', (e) => {
             if (e.target.id === 'settingsModal') {
@@ -68,8 +66,6 @@ class SettingsManager {
             this.showNotification('Failed to select game directory', 'error');
         }
     }
-
-    // Método toggleCredentialsFields removido pois não é mais necessário
 
     async saveSettings() {
         try {
@@ -122,7 +118,7 @@ class SettingsManager {
     }
 
     showNotification(message, type = 'info') {
-        // Usar o sistema de notificação do MU Online principal se disponível
+        // Usar o sistema de notificação do AsgardMU principal se disponível
         if (window.muDMG && window.muDMG.showNotification) {
             window.muDMG.showNotification(message, type);
         } else {
@@ -195,8 +191,6 @@ class SettingsManager {
                 errors.push('Invalid server URL format');
             }
         }
-
-        // Validação de credenciais removida - sistema não é mais usado
 
         return {
             isValid: errors.length === 0,

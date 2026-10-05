@@ -1,4 +1,4 @@
-**MU Online Launcher** is a free, open-source advanced game launcher built with Electron for MU Online private servers. This modern launcher provides a complete solution for server administrators who want to offer their players a professional, feature-rich gaming experience.
+**AsgardMU Launcher** is a free, open-source advanced game launcher built with Electron for AsgardMU private servers. This modern launcher provides a complete solution for server administrators who want to offer their players a professional, feature-rich gaming experience.
 
 The launcher combines a sleek, customizable interface with powerful features like auto-login, game file updates, in-game settings management, and real-time server information display through an integrated webview.
 
@@ -68,14 +68,20 @@ The launcher combines a sleek, customizable interface with powerful features lik
 
 The launcher is highly customizable through the `src/shared/url-config.js` file:
 
-    BASE_URL: 'https://yourserver.com',
-    GITHUB_DOWNLOAD: 'https://github.com/yourrepo/download',
-    UPDATE_URL: 'https://yourserver.com/updates'
+```javascript
+BASE_URL: 'https://asgardmu.com.br/',
+LAUNCHER: {
+  MAIN: 'news',                    // start screen → https://asgardmu.com.br/news
+  UPDATE: 'api/update/update.json' // → https://asgardmu.com.br/api/update/update.json
+},
+GITHUB_DOWNLOAD: 'https://github.com/yourrepo/download',
+```
 
 ### Configuration Options:
-- **BASE_URL**: Server website URL displayed in the webview
-- **GITHUB_DOWNLOAD**: Download link for the launcher
-- **UPDATE_URL**: Server endpoint for game file updates
+- **BASE_URL**: Server website URL (with trailing `/`)
+- **LAUNCHER.MAIN**: Page opened in the webview on the start screen (default: `news` → `https://asgardmu.com.br/news`)
+- **LAUNCHER.UPDATE**: Server endpoint for game file updates
+- **GITHUB_DOWNLOAD**: Download link for the full game client
 
 ## Usage
 
@@ -99,7 +105,7 @@ npm install
 .\build.ps1
 ```
 
-The compiled launcher will be available in `dist-limpo\MUOnline-win32-x64\`
+The compiled launcher will be available in `dist-limpo\AsgardMU-win32-x64\`
 
 ## Features for Server Owners
 
@@ -107,4 +113,4 @@ The compiled launcher will be available in `dist-limpo\MUOnline-win32-x64\`
 - **Update Control**: Manage game file updates from your server
 - **Web Integration**: Display your website content directly in the launcher
 - **Free & Open Source**: No licensing fees, full source code access
-- **Community Support**: Built for the MU Online private server community
+- **Community Support**: Built for the AsgardMU private server community
