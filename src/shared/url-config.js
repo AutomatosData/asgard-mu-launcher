@@ -25,8 +25,8 @@ const URL_CONFIG = {
   
   // ===== GITHUB RELEASES =====
   GITHUB: {
-    OWNER: 'seu-usuario', // Altere para seu usuário do GitHub
-    REPO: 'asgardmu-game', // Nome do repositório do jogo
+    OWNER: 'AutomatosData', // Usuário do GitHub dono do repositório do jogo
+    REPO: 'asgard-mu-client', // Nome do repositório do jogo
     // URL base para downloads de releases
     get RELEASES_URL() {
       return `https://api.github.com/repos/${this.OWNER}/${this.REPO}/releases`;

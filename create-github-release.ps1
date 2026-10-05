@@ -12,10 +12,10 @@ param(
     [string]$GitHubToken = $env:GITHUB_TOKEN,
     
     [Parameter(Mandatory=$false)]
-    [string]$Owner = "seu-usuario",
+    [string]$Owner = "AutomatosData",
     
     [Parameter(Mandatory=$false)]
-    [string]$Repo = "asgardmu-game",
+    [string]$Repo = "asgard-mu-client",
     
     [Parameter(Mandatory=$false)]
     [string]$ReleaseNotes = "Update release $Version"
@@ -60,7 +60,7 @@ foreach ($pattern in $filesToInclude) {
 }
 
 # Criar arquivo ZIP
-$zipPath = Join-Path $env:TEMP "asgardmu-game-$Version.zip"
+$zipPath = Join-Path $env:TEMP "asgard-mu-client-$Version.zip"
 Write-Host "[2/4] Criando arquivo ZIP..." -ForegroundColor Cyan
 Compress-Archive -Path "$tempDir\*" -DestinationPath $zipPath -Force
 
@@ -96,7 +96,7 @@ try {
 Write-Host "[4/4] Fazendo upload do asset..." -ForegroundColor Cyan
 
 # Upload do asset
-$assetName = "asgardmu-game-$Version.zip"
+$assetName = "asgard-mu-client-$Version.zip"
 $assetPath = $zipPath
 
 $headersUpload = @{
