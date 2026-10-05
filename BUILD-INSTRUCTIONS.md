@@ -9,7 +9,7 @@ Execute o script de build:
 
 ## 📁 Como Instalar o Launcher
 
-**IMPORTANTE**: O launcher **NÃO copia** os arquivos do jogo. Você deve colocar o `MUOnline.exe` na **mesma pasta** onde está o jogo instalado.
+**IMPORTANTE**: O launcher **NÃO copia** os arquivos do jogo. Você deve colocar o `AsgardMU.exe` na **mesma pasta** onde está o jogo instalado.
 
 ### Estrutura Final (após instalação):
 ```

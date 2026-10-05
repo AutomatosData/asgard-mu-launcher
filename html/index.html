@@ -28,12 +28,12 @@
             gap: 10px;
         }
         
-        .news-section, .rankings-section {
+        .new-section, .rankings-section {
             overflow-y: auto;
         }
 
         /* Grid placement para layout 2x2 */
-        .news-section { grid-column: 1; grid-row: 1; }
+        .new-section { grid-column: 1; grid-row: 1; }
         .rankings-section { grid-column: 2; grid-row: 1; }
         
         .socButton {
@@ -93,18 +93,18 @@
             gap: 10px;
         }
         
-        .news-section::-webkit-scrollbar,
+        .new-section::-webkit-scrollbar,
         .rankings-section::-webkit-scrollbar {
             width: 6px;
         }
         
-        .news-section::-webkit-scrollbar-track,
+        .new-section::-webkit-scrollbar-track,
         .rankings-section::-webkit-scrollbar-track {
             background: rgba(255, 255, 255, 0.05);
             border-radius: 3px;
         }
         
-        .news-section::-webkit-scrollbar-thumb,
+        .new-section::-webkit-scrollbar-thumb,
         .rankings-section::-webkit-scrollbar-thumb {
             background: rgba(255, 255, 255, 0.2);
             border-radius: 3px;
@@ -133,7 +133,7 @@
             gap: 8px;
         }
         
-        .news-item {
+        .new-item {
             background: rgba(255, 255, 255, 0.03);
             border-radius: 8px;
             padding: 13.43px;
@@ -142,13 +142,13 @@
             transition: all 0.3s ease;
         }
         
-        .news-item:hover {
+        .new-item:hover {
             background: rgba(255, 255, 255, 0.06);
             transform: translateY(-2px);
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
         }
         
-        .news-title {
+        .new-title {
             color: #ffffff;
             margin-bottom: 5px;
             font-size: 0.9em;
@@ -156,7 +156,7 @@
             line-height: 1.4;
         }
         
-        .news-meta {
+        .new-meta {
             color: #888888;
             font-size: 0.75em;
             display: flex;
@@ -164,7 +164,7 @@
             align-items: center;
         }
         
-        .news-category {
+        .new-category {
             background: rgba(100, 181, 246, 0.15);
             padding: 3px 8px;
             border-radius: 4px;
@@ -173,11 +173,11 @@
             font-weight: 500;
         }
         
-        .patch-news {
+        .patch-new {
             border-left-color: #ff9800;
         }
         
-        .patch-news .news-category {
+        .patch-new .new-category {
             background: rgba(255, 152, 0, 0.15);
             color: #ff9800;
         }
@@ -281,31 +281,31 @@
 <body>
     <div class="launcher-container">
         
-        <div class="news-section">
+        <div class="new-section">
             <div class="section-title">
-                News & Updates
+                new & Updates
             </div>
 
-            <div class="news-item">
-                <div class="news-title">Welcome to AsgardMU!!!</div>
-                <div class="news-meta">
-                    <span class="news-category">News</span>
+            <div class="new-item">
+                <div class="new-title">Welcome to AsgardMU!!!</div>
+                <div class="new-meta">
+                    <span class="new-category">new</span>
                     <span>26/11/2025</span>
                 </div>
             </div>
 
-            <div class="news-item">
-                <div class="news-title">New Season Starting Soon</div>
-                <div class="news-meta">
-                    <span class="news-category">Event</span>
+            <div class="new-item">
+                <div class="new-title">New Season Starting Soon</div>
+                <div class="new-meta">
+                    <span class="new-category">Event</span>
                     <span>25/11/2025</span>
                 </div>
             </div>
 
-            <div class="news-item patch-news">
-                <div class="news-title">Patch 1.0 - Bug Fixes!!!</div>
-                <div class="news-meta">
-                    <span class="news-category">Update</span>
+            <div class="new-item patch-new">
+                <div class="new-title">Patch 1.0 - Bug Fixes!!!</div>
+                <div class="new-meta">
+                    <span class="new-category">Update</span>
                     <span>24/11/2025</span>
                 </div>
             </div>

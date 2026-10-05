@@ -71,7 +71,7 @@ The launcher is highly customizable through the `src/shared/url-config.js` file:
 ```javascript
 BASE_URL: 'https://asgardmu.com.br/',
 LAUNCHER: {
-  MAIN: 'news'                     // start screen → https://asgardmu.com.br/news
+  MAIN: 'new'                     // start screen → https://asgardmu.com.br/new
 },
 UPDATE: {
   BASE_URL: 'https://updates.asgardmu.com.br/', // patches (Cloudflare R2)
@@ -86,7 +86,7 @@ GITHUB: {
 
 ### Configuration Options:
 - **BASE_URL**: Website URL (with trailing `/`)
-- **LAUNCHER.MAIN**: Page opened in the webview on the start screen (default: `news` → `https://asgardmu.com.br/news`)
+- **LAUNCHER.MAIN**: Page opened in the webview on the start screen (default: `new` → `https://asgardmu.com.br/new`)
 - **UPDATE.BASE_URL / UPDATE.MANIFEST**: Where the patch manifest and files are served (`https://updates.asgardmu.com.br/update.json`)
 - **GITHUB**: Repository and asset name of the full client ZIP, downloaded from `/releases/latest/download/AsgardMU-Client.zip`
 

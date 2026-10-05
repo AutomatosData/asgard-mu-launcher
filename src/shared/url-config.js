@@ -16,8 +16,8 @@ const URL_CONFIG = {
 
   // ===== ENDPOINTS DO LAUNCHER =====
   LAUNCHER: {
-    // Página inicial do launcher (webview): https://asgardmu.com.br/news
-    MAIN: 'news'
+    // Página inicial do launcher (webview): https://asgardmu.com.br/new
+    MAIN: 'new'
   },
 
   // ===== PATCHES (Cloudflare R2) =====

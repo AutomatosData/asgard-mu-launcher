@@ -146,7 +146,7 @@ const URL_CONFIG = {
   // Website shown in the start screen webview (hosted on Vercel)
   BASE_URL: 'https://asgardmu.com.br/',
   LAUNCHER: {
-    MAIN: 'news'                     // Start screen page → https://asgardmu.com.br/news
+    MAIN: 'new'                     // Start screen page → https://asgardmu.com.br/new
   },
 
   // Game patches (Cloudflare R2 bucket on a custom domain)
@@ -170,7 +170,7 @@ const URL_CONFIG = {
 
 | What | URL | Hosted on |
 |---|---|---|
-| Start screen (webview) | `https://asgardmu.com.br/news` | Vercel (website) |
+| Start screen (webview) | `https://asgardmu.com.br/new` | Vercel (website) |
 | Patch manifest | `https://updates.asgardmu.com.br/update.json` | Cloudflare R2 |
 | Patch files | `https://updates.asgardmu.com.br/<file path>?v=<md5>` | Cloudflare R2 |
 | Full client (first install) | `https://github.com/AutomatosData/asgard-mu-client/releases/latest/download/AsgardMU-Client.zip` | GitHub Releases |
