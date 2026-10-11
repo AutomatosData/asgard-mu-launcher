@@ -13,6 +13,10 @@ const URL_CONFIG = {
   
   // ===== CONFIGURAÇÃO DO JOGO (apenas desenvolvedor) =====
   GAME_EXECUTABLE: 'main.exe',
+  // Iniciador do cliente: injeta o Main.dll e abre o main.exe com os parâmetros
+  // corretos. O launcher prefere este executável; se faltar, abre o main.exe
+  // direto (que não conecta sozinho). Deixe vazio para abrir sempre o main.exe.
+  GAME_STARTER: 'AsgardMU-Start.exe',
 
   // ===== PING DO SERVIDOR (menu da bandeja) =====
   // Endereço/porta do ConnectServer usado para medir a latência via conexão TCP

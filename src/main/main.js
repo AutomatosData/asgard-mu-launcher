@@ -961,15 +961,26 @@ ipcMain.handle('launch-game', async () => {
   const exeName = gameExecutable();
   const gameExePath = path.join(launcherDir, exeName);
 
-  console.log(`Game exe path: ${gameExePath}`);
+  // Preferir o iniciador: ele injeta o Main.dll e abre o main.exe com os
+  // parâmetros corretos. Sem ele, o main.exe sozinho não conecta ao servidor.
+  const starterName = URL_CONFIG.GAME_STARTER;
+  const starterPath = starterName ? path.join(launcherDir, starterName) : null;
+  const useStarter = !!(starterPath && await fs.pathExists(starterPath));
+  const launchPath = useStarter ? starterPath : gameExePath;
+
+  console.log(`Launch path: ${launchPath} (starter: ${useStarter})`);
   console.log(`cwd: ${launcherDir}`);
-  logEvent('info', `Game exe path: ${gameExePath}`);
+  logEvent('info', `Launch path: ${launchPath} (starter: ${useStarter})`);
   logEvent('info', `cwd: ${launcherDir}`);
 
-  if (!await fs.pathExists(gameExePath)) {
-    console.log(`Game executable not found: ${gameExePath}`);
-    logEvent('error', `Game executable not found: ${gameExePath}`);
-    return { success: false, error: `Game executable not found: ${gameExePath}` };
+  if (!await fs.pathExists(launchPath)) {
+    console.log(`Game executable not found: ${launchPath}`);
+    logEvent('error', `Game executable not found: ${launchPath}`);
+    return { success: false, error: `Game executable not found: ${launchPath}` };
+  }
+
+  if (!useStarter) {
+    logEvent('warning', `Starter "${starterName}" not found; launching ${exeName} directly (may not connect)`);
   }
 
   try {
@@ -977,7 +988,7 @@ ipcMain.handle('launch-game', async () => {
 
     // Usar shell true para evitar problemas de permissão EACCES
     // Adicionar aspas ao redor do caminho se tiver espaços
-    const quotedPath = gameExePath.includes(' ') ? `"${gameExePath}"` : gameExePath;
+    const quotedPath = launchPath.includes(' ') ? `"${launchPath}"` : launchPath;
     const gameProcess = spawn(quotedPath, [], {
       cwd: launcherDir,
       detached: true,
