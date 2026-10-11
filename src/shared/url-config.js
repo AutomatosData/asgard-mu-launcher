@@ -14,6 +14,14 @@ const URL_CONFIG = {
   // ===== CONFIGURAÇÃO DO JOGO (apenas desenvolvedor) =====
   GAME_EXECUTABLE: 'main.exe',
 
+  // ===== PING DO SERVIDOR (menu da bandeja) =====
+  // Endereço/porta do ConnectServer usado para medir a latência via conexão TCP
+  GAME_SERVER: {
+    HOST: 'asgardmu.com.br',
+    PORT: 44405,
+    PING_INTERVAL_MS: 5000
+  },
+
   // ===== ENDPOINTS DO LAUNCHER =====
   LAUNCHER: {
     // Página inicial do launcher (webview): https://asgardmu.com.br/new
@@ -49,6 +57,16 @@ const URL_CONFIG = {
     }
   },
 
+  // ===== ANTI-CHEAT (histórico de detecções) =====
+  // O launcher faz POST do evento em BASE_URL + REPORT_PATH. TOKEN, quando
+  // preenchido, deve ser igual à variável ANTICHEAT_TOKEN do site; serve só
+  // para barrar POSTs triviais de fora (não é um segredo forte).
+  ANTICHEAT: {
+    REPORT_PATH: 'api/anticheat/report',
+    TOKEN: '',
+    SCAN_INTERVAL_MS: 7000
+  },
+
   // ===== CDN EXTERNOS =====
   CDN: {
     // Font Awesome (ícones)
@@ -73,7 +91,12 @@ const URL_CONFIG = {
   get CLIENT_DOWNLOAD_URL() {
     return this.GITHUB.CLIENT_DOWNLOAD_URL;
   },
-  
+
+  // Endpoint do histórico de anti-cheat (BASE_URL + REPORT_PATH)
+  get ANTICHEAT_REPORT_URL() {
+    return `${this.BASE_URL}${this.ANTICHEAT.REPORT_PATH}`;
+  },
+
   // ===== FUNÇÕES AUXILIARES =====
   
   

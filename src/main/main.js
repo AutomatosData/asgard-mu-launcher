@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain, dialog, shell, Tray, Menu, nativeImage, screen } = require('electron');
 const path = require('path');
+const net = require('net');
 const fs = require('fs-extra');
 const Store = require('electron-store');
 
@@ -68,6 +69,21 @@ try {
   };
 }
 
+let AntiCheat;
+try {
+  AntiCheat = require(path.join(__dirname, 'anti-cheat'));
+} catch (error) {
+  console.error('Error importing anti-cheat:', error);
+  AntiCheat = class {
+    constructor() {
+      console.log('Anti-cheat not available, using fallback');
+    }
+    startMonitoring() {}
+    stopMonitoring() {}
+    isActive() { return false; }
+  };
+}
+
 const isDev = !app.isPackaged || process.env.NODE_ENV === 'development';
 
 function resolveAsset(assetName) {
@@ -96,6 +112,8 @@ let windowDetector;
 let dataManager;
 
 let launcherOptionManager;
+
+let antiCheat;
 
 const URL_CONFIG = require('../shared/url-config');
 const I18N = require('../shared/i18n');
@@ -149,6 +167,7 @@ function getGameDirectory() {
 
 let mainWindow;
 let tray = null;
+let serverPing = null;
 let isQuiting = false;
 let gameProcesses = [];
 
@@ -330,6 +349,10 @@ function updateTrayMenu() {
         }
       }
     },
+    {
+      label: serverPing === null ? t('tray.pingOffline') : t('tray.ping', { ms: serverPing }),
+      enabled: false
+    },
     { type: 'separator' },
     {
       label: t('tray.quit'),
@@ -342,6 +365,36 @@ function updateTrayMenu() {
   ]);
   
   tray.setContextMenu(contextMenu);
+}
+
+// Mede a latência com o servidor abrindo uma conexão TCP (retorna ms ou null se falhar)
+function measureServerPing() {
+  const { HOST, PORT } = URL_CONFIG.GAME_SERVER;
+  return new Promise(resolve => {
+    const start = process.hrtime.bigint();
+    const socket = net.createConnection({ host: HOST, port: PORT });
+    const finish = (ms) => {
+      socket.destroy();
+      resolve(ms);
+    };
+    socket.setTimeout(3000);
+    socket.once('connect', () => finish(Math.round(Number(process.hrtime.bigint() - start) / 1e6)));
+    socket.once('timeout', () => finish(null));
+    socket.once('error', () => finish(null));
+  });
+}
+
+async function refreshServerPing() {
+  const ping = await measureServerPing();
+  if (ping !== serverPing) {
+    serverPing = ping;
+    updateTrayMenu();
+  }
+}
+
+function startServerPingMonitor() {
+  refreshServerPing();
+  setInterval(refreshServerPing, URL_CONFIG.GAME_SERVER.PING_INTERVAL_MS);
 }
 
 function showMinimizeNotification() {
@@ -378,8 +431,25 @@ app.whenReady().then(() => {
   windowDetector = new WindowDetector();
   
   dataManager = new DataManager();
-  
+
   launcherOptionManager = new LauncherOptionManager();
+
+  antiCheat = new AntiCheat({
+    logEvent,
+    killGame: (info) => {
+      logEvent('warning', `[AntiCheat] Encerrando o jogo: ${info?.offender || 'programa não permitido'}`);
+      killAllGameProcesses();
+    },
+    onDetection: ({ offenderName }) => {
+      if (mainWindow) {
+        mainWindow.webContents.send('anticheat-detection', { offenderName });
+      }
+      showGameNotification('AsgardMU', t('notify.anticheatClosed', { name: offenderName }));
+    },
+    reportUrl: URL_CONFIG.ANTICHEAT_REPORT_URL,
+    reportToken: URL_CONFIG.ANTICHEAT.TOKEN,
+    rulesFile: path.join(getLogDirectory(), '..', 'anti-cheat-rules.json')
+  });
 
   // Carregar idioma salvo para o menu da bandeja e notificações
   launcherOptionManager.readLauncherOptions()
@@ -402,6 +472,7 @@ app.whenReady().then(() => {
   
   createWindow();
   createTray();
+  startServerPingMonitor();
   
 });
 
@@ -421,7 +492,11 @@ app.on('before-quit', (event) => {
   if (windowDetector) {
     windowDetector.stopMonitoring();
   }
-  
+
+  if (antiCheat) {
+    antiCheat.stopMonitoring();
+  }
+
   // Não fechar game processes automaticamente - deixar o jogo rodar
 });
 
@@ -946,6 +1021,11 @@ ipcMain.handle('launch-game', async () => {
     if (gameProcess.pid) {
       console.log(`Game started with PID: ${gameProcess.pid}`);
       logEvent('info', `Game started with PID: ${gameProcess.pid}`);
+
+      // Inicia o anti-cheat local enquanto o jogo roda.
+      if (antiCheat && !antiCheat.isActive()) {
+        antiCheat.startMonitoring(URL_CONFIG.ANTICHEAT.SCAN_INTERVAL_MS);
+      }
 
       setTimeout(() => {
         console.log('MU launched successfully');

@@ -145,6 +145,11 @@ class MuDMG {
             this.launchGame();
         });
 
+        // Anti-cheat: aviso quando um programa não permitido é detectado
+        ipcRenderer.on('anticheat-detection', (event, data) => {
+            this.showNotification(this.t('notify.anticheatClosed', { name: data?.offenderName || '' }), 'error');
+        });
+
         // Listen for data installation progress
         ipcRenderer.on('data-installation-progress', (event, progress) => {
             this.handleDataInstallationProgress(progress);
