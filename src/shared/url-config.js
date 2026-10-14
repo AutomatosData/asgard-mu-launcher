@@ -32,6 +32,12 @@ const URL_CONFIG = {
     MAIN: 'new'
   },
 
+  // ===== AJUDA NO JOGO (tecla F1) =====
+  // Página aberta numa janela do launcher quando o jogador aperta F1 no jogo
+  HELP: {
+    PATH: 'whitepaper'
+  },
+
   // ===== PATCHES (Cloudflare R2) =====
   // Bucket público servido em domínio próprio. Conteúdo = pasta gerada pelo update-creator:
   //   update.json            -> manifesto (path, size, hash MD5)
@@ -80,6 +86,11 @@ const URL_CONFIG = {
   // ===== URLS COMPLETAS =====
   get LAUNCHER_URL() {
     return `${this.BASE_URL}${this.LAUNCHER.MAIN}`;
+  },
+
+  // Whitepaper aberto pelo F1: https://asgardmu.com.br/whitepaper
+  get HELP_URL() {
+    return `${this.BASE_URL}${this.HELP.PATH}`;
   },
   
   

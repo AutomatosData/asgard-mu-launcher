@@ -84,6 +84,18 @@ try {
   };
 }
 
+let HelpHotkey;
+try {
+  HelpHotkey = require(path.join(__dirname, 'help-hotkey'));
+} catch (error) {
+  console.error('Error importing help-hotkey:', error);
+  HelpHotkey = class {
+    start() {}
+    stop() {}
+    isActive() { return false; }
+  };
+}
+
 const isDev = !app.isPackaged || process.env.NODE_ENV === 'development';
 
 function resolveAsset(assetName) {
@@ -114,6 +126,8 @@ let dataManager;
 let launcherOptionManager;
 
 let antiCheat;
+
+let helpHotkey;
 
 const URL_CONFIG = require('../shared/url-config');
 const I18N = require('../shared/i18n');
@@ -451,6 +465,13 @@ app.whenReady().then(() => {
     rulesFile: path.join(getLogDirectory(), '..', 'anti-cheat-rules.json')
   });
 
+  helpHotkey = new HelpHotkey({
+    url: URL_CONFIG.HELP_URL,
+    gameProcess: gameExecutable(),
+    icon: resolveAsset('icon.ico'),
+    logEvent
+  });
+
   // Carregar idioma salvo para o menu da bandeja e notificações
   launcherOptionManager.readLauncherOptions()
     .then(options => {
@@ -495,6 +516,10 @@ app.on('before-quit', (event) => {
 
   if (antiCheat) {
     antiCheat.stopMonitoring();
+  }
+
+  if (helpHotkey) {
+    helpHotkey.stop();
   }
 
   // Não fechar game processes automaticamente - deixar o jogo rodar
@@ -1036,6 +1061,11 @@ ipcMain.handle('launch-game', async () => {
       // Inicia o anti-cheat local enquanto o jogo roda.
       if (antiCheat && !antiCheat.isActive()) {
         antiCheat.startMonitoring(URL_CONFIG.ANTICHEAT.SCAN_INTERVAL_MS);
+      }
+
+      // F1 no jogo abre o whitepaper.
+      if (helpHotkey && !helpHotkey.isActive()) {
+        helpHotkey.start();
       }
 
       setTimeout(() => {
