@@ -131,6 +131,7 @@ let helpHotkey;
 
 const URL_CONFIG = require('../shared/url-config');
 const I18N = require('../shared/i18n');
+const languagePack = require('./language-pack');
 
 // Idioma da interface (mesmo valor de langSelection em LauncherOption.if)
 let currentLanguage = I18N.DEFAULT_LANGUAGE;
@@ -446,7 +447,7 @@ app.whenReady().then(() => {
   
   dataManager = new DataManager();
 
-  launcherOptionManager = new LauncherOptionManager();
+  launcherOptionManager = new LauncherOptionManager(store);
 
   antiCheat = new AntiCheat({
     logEvent,
@@ -476,6 +477,10 @@ app.whenReady().then(() => {
   launcherOptionManager.readLauncherOptions()
     .then(options => {
       currentLanguage = I18N.normalize(launcherOptionManager.convertToGameSettings(options).langSelection);
+      // Guarda o idioma antes que launch-game grave Language:0 no LauncherOption.if
+      if (!store.has('gameLanguage')) {
+        store.set('gameLanguage', currentLanguage);
+      }
       updateTrayMenu();
     })
     .catch(err => console.error('[Main] Failed to read language:', err));
@@ -1006,6 +1011,19 @@ ipcMain.handle('launch-game', async () => {
 
   if (!useStarter) {
     logEvent('warning', `Starter "${starterName}" not found; launching ${exeName} directly (may not connect)`);
+  }
+
+  // O cliente roda sempre em inglês; o idioma escolhido entra trocando arquivos
+  try {
+    const options = await launcherOptionManager.readLauncherOptions();
+    if (String(options.Language) !== '0') {
+      await launcherOptionManager.writeLauncherOptions({ ...options, Language: 0 });
+    }
+    await registryManager.writeRegistryValue('LangSelection', 'REG_SZ', 'Eng');
+    await languagePack.apply(launcherDir, currentLanguage);
+    logEvent('info', `Game language: ${currentLanguage}`);
+  } catch (error) {
+    logEvent('error', `Failed to apply game language: ${error.message}`);
   }
 
   try {

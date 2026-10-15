@@ -4,6 +4,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { ipcMain } = require('electron');
 const URL_CONFIG = require('../shared/url-config');
+const languagePack = require('./language-pack');
 
 class Updater {
   constructor() {
@@ -339,6 +340,9 @@ const updater = new Updater();
 if (typeof ipcMain !== 'undefined') {
   ipcMain.handle('check-updates', async (event, { gamePath, serverUrl }) => {
     try {
+      // Arquivos traduzidos não batem com o MD5 do manifesto: voltar o inglês antes
+      await languagePack.restore(gamePath);
+
       const manifestResult = await updater.downloadManifest(serverUrl, gamePath);
       if (!manifestResult.success) {
         return manifestResult;
@@ -376,6 +380,8 @@ if (typeof ipcMain !== 'undefined') {
         };
       }
       
+      await languagePack.restore(gamePath);
+
       const result = await updater.performUpdate(gamePath, serverUrl, (progress) => {
         event.sender.send('update-progress', progress);
       });

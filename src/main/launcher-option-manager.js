@@ -2,8 +2,10 @@ const fs = require('fs-extra');
 const path = require('path');
 
 class LauncherOptionManager {
-  constructor() {
+  // store: electron-store onde fica o idioma escolhido (chave gameLanguage)
+  constructor(store) {
     this.fileName = 'LauncherOption.if';
+    this.store = store;
   }
 
   getFilePath() {
@@ -90,17 +92,17 @@ class LauncherOptionManager {
       0: 0    // Max monitor support
     };
 
-    const languageMap = {
-      'Eng': 0,
-      'Por': 1,
-      'Spa': 2
-    };
+    if (gameSettings.langSelection !== undefined && this.store) {
+      this.store.set('gameLanguage', gameSettings.langSelection);
+    }
 
     return {
       DevModeIndex: gameSettings.resolution !== undefined ? resolutionMap[gameSettings.resolution] : 11,
       WindowMode: gameSettings.windowMode !== undefined ? gameSettings.windowMode : 1,
       ID: gameSettings.ID || '',
-      Language: gameSettings.langSelection !== undefined ? languageMap[gameSettings.langSelection] : 0
+      // O cliente só funciona completo em inglês (Language 1 abre um modo
+      // coreano quebrado). O idioma escolhido vai por language-pack.js.
+      Language: 0
     };
   }
 
@@ -136,7 +138,10 @@ class LauncherOptionManager {
       musicOnOFF: 1,
       soundOnOFF: 1,
       volumeLevel: 10,
-      langSelection: launcherOptions.Language !== undefined ? languageMap[parseInt(launcherOptions.Language)] : 'Eng',
+      // Idioma salvo pelo launcher; Language do arquivo só vale para quem
+      // salvou as opções antes de o cliente ficar fixo em inglês
+      langSelection: (this.store && this.store.get('gameLanguage'))
+        || (launcherOptions.Language !== undefined ? languageMap[parseInt(launcherOptions.Language)] : 'Eng'),
       ID: launcherOptions.ID || ''
     };
   }
