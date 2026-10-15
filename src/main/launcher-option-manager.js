@@ -1,6 +1,15 @@
 const fs = require('fs-extra');
 const path = require('path');
 
+// Idioma do launcher -> idioma do cliente. index é o ID em
+// Data/Custom/LangManager.xml (LauncherOption.if Language) e code é a pasta
+// do Lang.mpr / Data/Local (registro LangSelection).
+const CLIENT_LANGUAGES = {
+  Eng: { index: 0, code: 'Eng' },
+  Spa: { index: 1, code: 'Spn' },
+  Por: { index: 2, code: 'Por' }
+};
+
 class LauncherOptionManager {
   // store: electron-store onde fica o idioma escolhido (chave gameLanguage)
   constructor(store) {
@@ -100,9 +109,7 @@ class LauncherOptionManager {
       DevModeIndex: gameSettings.resolution !== undefined ? resolutionMap[gameSettings.resolution] : 11,
       WindowMode: gameSettings.windowMode !== undefined ? gameSettings.windowMode : 1,
       ID: gameSettings.ID || '',
-      // O cliente só funciona completo em inglês (Language 1 abre um modo
-      // coreano quebrado). O idioma escolhido vai por language-pack.js.
-      Language: 0
+      Language: LauncherOptionManager.clientLanguage(gameSettings.langSelection).index
     };
   }
 
@@ -126,6 +133,8 @@ class LauncherOptionManager {
       15: 15
     };
 
+    // Ordem das versões antigas do launcher, que gravavam o idioma só no
+    // arquivo; depois da primeira execução o idioma fica no store
     const languageMap = {
       0: 'Eng',
       1: 'Por',
@@ -138,12 +147,17 @@ class LauncherOptionManager {
       musicOnOFF: 1,
       soundOnOFF: 1,
       volumeLevel: 10,
-      // Idioma salvo pelo launcher; Language do arquivo só vale para quem
-      // salvou as opções antes de o cliente ficar fixo em inglês
+      // Idioma salvo pelo launcher; o Language do arquivo segue o índice do
+      // cliente (CLIENT_LANGUAGES), por isso só vale para quem ainda não tem store
       langSelection: (this.store && this.store.get('gameLanguage'))
         || (launcherOptions.Language !== undefined ? languageMap[parseInt(launcherOptions.Language)] : 'Eng'),
       ID: launcherOptions.ID || ''
     };
+  }
+
+  // Índice e código do cliente para um idioma do launcher (padrão: inglês)
+  static clientLanguage(language) {
+    return CLIENT_LANGUAGES[language] || CLIENT_LANGUAGES.Eng;
   }
 }
 

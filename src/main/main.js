@@ -477,7 +477,7 @@ app.whenReady().then(() => {
   launcherOptionManager.readLauncherOptions()
     .then(options => {
       currentLanguage = I18N.normalize(launcherOptionManager.convertToGameSettings(options).langSelection);
-      // Guarda o idioma antes que launch-game grave Language:0 no LauncherOption.if
+      // Guarda o idioma antes que launch-game grave o índice do cliente no LauncherOption.if
       if (!store.has('gameLanguage')) {
         store.set('gameLanguage', currentLanguage);
       }
@@ -1013,15 +1013,18 @@ ipcMain.handle('launch-game', async () => {
     logEvent('warning', `Starter "${starterName}" not found; launching ${exeName} directly (may not connect)`);
   }
 
-  // O cliente roda sempre em inglês; o idioma escolhido entra trocando arquivos
+  // O cliente troca de idioma sozinho (LangManager.xml + pasta do idioma no
+  // Lang.mpr e em Data/Local); o launcher só grava o idioma escolhido
   try {
+    // Desfaz a troca de arquivos das versões anteriores do launcher
+    await languagePack.restore(launcherDir);
+    const client = LauncherOptionManager.clientLanguage(currentLanguage);
     const options = await launcherOptionManager.readLauncherOptions();
-    if (String(options.Language) !== '0') {
-      await launcherOptionManager.writeLauncherOptions({ ...options, Language: 0 });
+    if (String(options.Language) !== String(client.index)) {
+      await launcherOptionManager.writeLauncherOptions({ ...options, Language: client.index });
     }
-    await registryManager.writeRegistryValue('LangSelection', 'REG_SZ', 'Eng');
-    await languagePack.apply(launcherDir, currentLanguage);
-    logEvent('info', `Game language: ${currentLanguage}`);
+    await registryManager.writeRegistryValue('LangSelection', 'REG_SZ', client.code);
+    logEvent('info', `Game language: ${currentLanguage} (client ${client.code}, index ${client.index})`);
   } catch (error) {
     logEvent('error', `Failed to apply game language: ${error.message}`);
   }
