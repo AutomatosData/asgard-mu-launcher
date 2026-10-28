@@ -53,47 +53,11 @@ if (-not $electronVersion) { $electronVersion = ((Get-Content ../package.json -R
 npx @electron/packager . AsgardMU --platform=win32 --arch=x64 --out=../dist-limpo --overwrite --icon=icon.ico --asar --electron-version=$electronVersion
 Set-Location ".."
 
-Write-Host "[6/5] Aplicando manifest de administrador..." -ForegroundColor Yellow
+Write-Host "[6/5] Finalizando build..." -ForegroundColor Yellow
+# Sem manifest de administrador: o launcher roda como usuario comum e abre o
+# main.exe com __COMPAT_LAYER=RunAsInvoker (ver launch-game em src/main/main.js)
 if (Test-Path "dist-limpo\AsgardMU-win32-x64\AsgardMU.exe") {
-    Write-Host "Executavel encontrado, aplicando manifest..." -ForegroundColor Green
-    
-    Write-Host "Criando manifest temporario..." -ForegroundColor Cyan
-    @"
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
-  <assemblyIdentity version="1.0.0.0" processorArchitecture="*" name="AsgardMU" type="win32"/>
-  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
-    <security>
-      <requestedPrivileges>
-        <requestedExecutionLevel level="requireAdministrator" uiAccess="false"/>
-      </requestedPrivileges>
-    </security>
-  </trustInfo>
-</assembly>
-"@ | Out-File -FilePath "app.manifest" -Encoding UTF8
-    
-    Write-Host "Aplicando manifest com mt.exe..." -ForegroundColor Cyan
-    # Localizar mt.exe x64 do Windows SDK mais recente instalado
-    $mtExe = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\mt.exe" -ErrorAction SilentlyContinue |
-        Sort-Object { [version]$_.Directory.Parent.Name } -Descending | Select-Object -First 1 -ExpandProperty FullName
-    $mtOk = $false
-    if ($mtExe) {
-        & $mtExe -manifest "app.manifest" "-outputresource:dist-limpo\AsgardMU-win32-x64\AsgardMU.exe;#1"
-        $mtOk = ($LASTEXITCODE -eq 0)
-    } else {
-        Write-Host "mt.exe nao encontrado (instale o Windows SDK)" -ForegroundColor Red
-    }
-    if ($mtOk) {
-        Write-Host "Manifest de administrador aplicado com sucesso" -ForegroundColor Green
-        Write-Host "Launcher solicitara privilegios de administrador via UAC" -ForegroundColor Green
-    } else {
-        Write-Host "Falha ao aplicar manifest" -ForegroundColor Red
-    }
-    
-    Write-Host "Removendo manifest temporario..." -ForegroundColor Cyan
-Remove-Item "app.manifest" -Force -ErrorAction SilentlyContinue
-
-Write-Host "Finalizando build..." -ForegroundColor Cyan
+    Write-Host "Executavel encontrado" -ForegroundColor Green
 Start-Sleep -Seconds 1
 
 Write-Host "Removendo arquivos desnecessarios..." -ForegroundColor Cyan

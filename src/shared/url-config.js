@@ -13,10 +13,10 @@ const URL_CONFIG = {
   
   // ===== CONFIGURAÇÃO DO JOGO (apenas desenvolvedor) =====
   GAME_EXECUTABLE: 'main.exe',
-  // Iniciador do cliente: injeta o Main.dll e abre o main.exe com os parâmetros
-  // corretos. O launcher prefere este executável; se faltar, abre o main.exe
-  // direto (que não conecta sozinho). Deixe vazio para abrir sempre o main.exe.
-  GAME_STARTER: 'game.exe',
+  // DLL do cliente que carrega o Main.dll no main.exe (proxy do glu32.dll,
+  // fonte em Asgard-Mu-ServerS21/MainLoader). Substitui o antigo game.exe.
+  // Sem ela, o main.exe abre sem o Main.dll e não conecta ao servidor.
+  GAME_LOADER: 'glu32.dll',
 
   // ===== PING DO SERVIDOR (menu da bandeja) =====
   // Endereço/porta do ConnectServer usado para medir a latência via conexão TCP
@@ -38,33 +38,26 @@ const URL_CONFIG = {
     PATH: 'whitepaper'
   },
 
-  // ===== PATCHES (Cloudflare R2) =====
-  // Bucket público servido em domínio próprio. Conteúdo = pasta gerada pelo update-creator:
-  //   update.json            -> manifesto (path, size, hash MD5)
-  //   <path do arquivo>      -> arquivos do jogo, na mesma estrutura de pastas do cliente
-  UPDATE: {
-    BASE_URL: 'https://updates.asgardmu.com.br/', // deve terminar com "/"
-    MANIFEST: 'update.json'
-  },
-
-  // ===== CLIENTE COMPLETO (GitHub Releases) =====
+  // ===== PUBLICAÇÃO (GitHub Releases) =====
+  // Tudo que o launcher baixa fica nos releases do repositório público abaixo.
+  // Quem publica é o tools/release.js (ver PUBLICAR.md):
+  //   current/update.json         -> manifesto: cliente completo, launcher e patches
+  //   current/AsgardMU-Setup.exe  -> instalador atual (link fixo para o site)
+  //   client-<versão>/*.zip       -> cliente completo em partes (primeira instalação)
+  //   patch-<versão>/<md5>        -> arquivos alterados depois do cliente completo
+  //   launcher-v<versão>/*.exe    -> instaladores do launcher
+  // As URLs dos arquivos vêm no manifesto; só a URL do manifesto fica fixa aqui.
   GITHUB: {
     OWNER: 'AutomatosData', // Usuário do GitHub dono do repositório do jogo
     REPO: 'asgard-mu-client', // Nome do repositório do jogo
-    // Nome fixo do ZIP do cliente em todo release (permite usar /releases/latest/download)
-    CLIENT_ASSET: 'AsgardMU-Client.zip',
-    // URL base para downloads de releases
-    get RELEASES_URL() {
-      return `https://api.github.com/repos/${this.OWNER}/${this.REPO}/releases`;
-    },
-    // URL para download de assets de um release específico
-    getAssetDownloadUrl(tag, assetName) {
-      return `https://github.com/${this.OWNER}/${this.REPO}/releases/download/${tag}/${assetName}`;
-    },
-    // URL do ZIP do cliente no release mais recente
-    get CLIENT_DOWNLOAD_URL() {
-      return `https://github.com/${this.OWNER}/${this.REPO}/releases/latest/download/${this.CLIENT_ASSET}`;
+    CURRENT_TAG: 'current', // Release com o manifesto atual
+    get DOWNLOAD_URL() {
+      return `https://github.com/${this.OWNER}/${this.REPO}/releases/download/`;
     }
+  },
+
+  UPDATE: {
+    MANIFEST: 'update.json'
   },
 
   // ===== ANTI-CHEAT (histórico de detecções) =====
@@ -94,17 +87,17 @@ const URL_CONFIG = {
   },
   
   
-  // Base dos patches (pasta onde ficam update.json e os arquivos)
-  get UPDATE_URL() {
-    return this.UPDATE.BASE_URL;
-  },
-
+  // Manifesto: https://github.com/<OWNER>/<REPO>/releases/download/current/update.json
+  // A variável de ambiente ASGARD_MANIFEST_URL troca o manifesto (teste local
+  // com "npm run release:serve", ver PUBLICAR.md)
   get UPDATE_MANIFEST_URL() {
-    return `${this.UPDATE.BASE_URL}${this.UPDATE.MANIFEST}`;
+    const override = typeof process !== 'undefined' && process.env && process.env.ASGARD_MANIFEST_URL;
+    return override || `${this.GITHUB.DOWNLOAD_URL}${this.GITHUB.CURRENT_TAG}/${this.UPDATE.MANIFEST}`;
   },
 
-  get CLIENT_DOWNLOAD_URL() {
-    return this.GITHUB.CLIENT_DOWNLOAD_URL;
+  // Pasta do manifesto (URLs relativas no manifesto partem daqui)
+  get UPDATE_URL() {
+    return this.UPDATE_MANIFEST_URL.replace(/[^/]*$/, '');
   },
 
   // Endpoint do histórico de anti-cheat (BASE_URL + REPORT_PATH)

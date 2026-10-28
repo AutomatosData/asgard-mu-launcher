@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog, shell, Tray, Menu, nativeImage, screen } = require('electron');
 const path = require('path');
 const net = require('net');
+const os = require('os');
 const fs = require('fs-extra');
 const Store = require('electron-store');
 
@@ -96,6 +97,16 @@ try {
   };
 }
 
+let LauncherUpdate;
+try {
+  LauncherUpdate = require(path.join(__dirname, 'launcher-update'));
+} catch (error) {
+  console.error('Error importing launcher-update:', error);
+  LauncherUpdate = class {
+    async check() { return { updating: false, reason: 'unavailable' }; }
+  };
+}
+
 const isDev = !app.isPackaged || process.env.NODE_ENV === 'development';
 
 function resolveAsset(assetName) {
@@ -128,6 +139,8 @@ let launcherOptionManager;
 let antiCheat;
 
 let helpHotkey;
+
+let launcherUpdate;
 
 const URL_CONFIG = require('../shared/url-config');
 const I18N = require('../shared/i18n');
@@ -168,7 +181,14 @@ function getGameDirectory() {
     return execDir;
   }
 
-  // Se não encontrou no diretório do executável, verificar o store
+  // Launcher instalado: o jogo fica sempre na pasta do launcher. Sem o main.exe aqui,
+  // o launcher baixa o cliente nesta pasta. O gamePath salvo pode ser de outra
+  // instalação (o config.json em %APPDATA%\AsgardMU é um só por usuário).
+  if (app.isPackaged) {
+    return execDir;
+  }
+
+  // Desenvolvimento (npm start): usar o cliente salvo no store
   const storedPath = store.get('gamePath');
   if (storedPath && fs.existsSync(path.join(storedPath, exeName))) {
     logEvent('info', `Using stored gamePath: ${storedPath}`);
@@ -445,7 +465,9 @@ app.whenReady().then(() => {
   
   windowDetector = new WindowDetector();
   
-  dataManager = new DataManager();
+  dataManager = new DataManager(getGameDirectory);
+
+  launcherUpdate = new LauncherUpdate({ store, logEvent });
 
   launcherOptionManager = new LauncherOptionManager(store);
 
@@ -528,6 +550,21 @@ app.on('before-quit', (event) => {
   }
 
   // Não fechar game processes automaticamente - deixar o jogo rodar
+});
+
+// Resoluções na ordem e com o filtro do jogo (DevModeIndex = posição na lista)
+// Versão do launcher (package.json) para o título da janela
+ipcMain.handle('get-app-version', () => app.getVersion());
+
+ipcMain.handle('get-display-modes', async () => {
+  try {
+    const { getDisplayModes } = require(path.join(__dirname, 'display-modes'));
+    const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+    return { success: true, modes: await getDisplayModes(), workArea: { width, height } };
+  } catch (error) {
+    console.error('Failed to get display modes:', error);
+    return { success: false, error: error.message, modes: [] };
+  }
 });
 
 ipcMain.handle('get-game-settings', async () => {
@@ -951,24 +988,68 @@ ipcMain.handle('can-perform-update', async () => {
   }
 });
 
+// Primeira instalação: baixa o cliente completo (chamado pela janela quando falta o main.exe)
 ipcMain.handle('install-game-data', async () => {
   try {
     if (!dataManager) {
       return { success: false, error: 'DataManager not initialized' };
     }
-    
-    console.log('[Main] Manual data installation requested');
+
+    if (gameDataState.isInstalling) {
+      return { success: false, error: 'Installation already running' };
+    }
+
+    // Em desenvolvimento a pasta do jogo é a pasta do projeto: não baixar 4 GB nela
+    if (!app.isPackaged) {
+      logEvent('warning', 'Client download skipped in development - copy the client next to the launcher');
+      return { success: false, error: 'Client download is disabled in development' };
+    }
+
+    console.log('[Main] Game client installation started');
+    logEvent('info', `Game client installation started in ${getGameDirectory()}`);
+    gameDataState.isInstalling = true;
     await dataManager.ensureDataFolder((progress) => {
+      gameDataState.installationProgress = progress;
       if (mainWindow) {
         mainWindow.webContents.send('data-installation-progress', progress);
       }
     });
-    
+
+    gameDataState.isInstalled = true;
+    gameDataState.canUpdate = true;
+    logEvent('info', 'Game client installed');
     return { success: true };
   } catch (error) {
     console.error('Failed to install game data:', error);
-    return { success: false, error: error.message };
+    logEvent('error', `Failed to install game data: ${error.message}`);
+    return { success: false, error: error.message, code: error.code, params: error.params };
+  } finally {
+    gameDataState.isInstalling = false;
   }
+});
+
+// Launcher novo publicado: baixa o instalador, abre em modo silencioso e fecha o launcher
+ipcMain.handle('check-launcher-update', async (event) => {
+  if (!launcherUpdate) {
+    return { updating: false, reason: 'unavailable' };
+  }
+
+  const result = await launcherUpdate.check((progress) => {
+    event.sender.send('update-progress', {
+      type: 'download-progress',
+      file: 'AsgardMU-Setup.exe',
+      ...progress
+    });
+  });
+
+  if (result.updating) {
+    // O instalador espera o AsgardMU.exe fechar antes de copiar os arquivos
+    setTimeout(() => {
+      isQuiting = true;
+      app.quit();
+    }, 1500);
+  }
+  return result;
 });
 
 ipcMain.handle('get-data-folder-info', async () => {
@@ -989,18 +1070,11 @@ ipcMain.handle('get-data-folder-info', async () => {
 ipcMain.handle('launch-game', async () => {
   const launcherDir = getGameDirectory();
   const exeName = gameExecutable();
-  const gameExePath = path.join(launcherDir, exeName);
+  const launchPath = path.join(launcherDir, exeName);
 
-  // Preferir o iniciador: ele injeta o Main.dll e abre o main.exe com os
-  // parâmetros corretos. Sem ele, o main.exe sozinho não conecta ao servidor.
-  const starterName = URL_CONFIG.GAME_STARTER;
-  const starterPath = starterName ? path.join(launcherDir, starterName) : null;
-  const useStarter = !!(starterPath && await fs.pathExists(starterPath));
-  const launchPath = useStarter ? starterPath : gameExePath;
-
-  console.log(`Launch path: ${launchPath} (starter: ${useStarter})`);
+  console.log(`Launch path: ${launchPath}`);
   console.log(`cwd: ${launcherDir}`);
-  logEvent('info', `Launch path: ${launchPath} (starter: ${useStarter})`);
+  logEvent('info', `Launch path: ${launchPath}`);
   logEvent('info', `cwd: ${launcherDir}`);
 
   if (!await fs.pathExists(launchPath)) {
@@ -1009,8 +1083,10 @@ ipcMain.handle('launch-game', async () => {
     return { success: false, error: `Game executable not found: ${launchPath}` };
   }
 
-  if (!useStarter) {
-    logEvent('warning', `Starter "${starterName}" not found; launching ${exeName} directly (may not connect)`);
+  // A DLL loader (glu32.dll) carrega o Main.dll quando o main.exe abre
+  const loaderName = URL_CONFIG.GAME_LOADER;
+  if (loaderName && !await fs.pathExists(path.join(launcherDir, loaderName))) {
+    logEvent('warning', `Loader "${loaderName}" not found; ${exeName} will start without Main.dll (may not connect)`);
   }
 
   // O cliente troca de idioma sozinho (LangManager.xml + pasta do idioma no
@@ -1018,9 +1094,13 @@ ipcMain.handle('launch-game', async () => {
   try {
     // Desfaz a troca de arquivos das versões anteriores do launcher
     await languagePack.restore(launcherDir);
-    const client = LauncherOptionManager.clientLanguage(currentLanguage);
     const options = await launcherOptionManager.readLauncherOptions();
-    if (String(options.Language) !== String(client.index)) {
+    // O idioma pode ter mudado na tecla O do jogo desde que o launcher abriu
+    currentLanguage = I18N.normalize(launcherOptionManager.convertToGameSettings(options).langSelection);
+    const client = LauncherOptionManager.clientLanguage(currentLanguage);
+    // O cliente publicado não traz LauncherOption.if: criar na primeira vez
+    const optionsExist = await fs.pathExists(launcherOptionManager.getFilePath());
+    if (!optionsExist || String(options.Language) !== String(client.index)) {
       await launcherOptionManager.writeLauncherOptions({ ...options, Language: client.index });
     }
     await registryManager.writeRegistryValue('LangSelection', 'REG_SZ', client.code);
@@ -1032,15 +1112,19 @@ ipcMain.handle('launch-game', async () => {
   try {
     const { spawn } = require('child_process');
 
-    // Usar shell true para evitar problemas de permissão EACCES
-    // Adicionar aspas ao redor do caminho se tiver espaços
-    const quotedPath = launchPath.includes(' ') ? `"${launchPath}"` : launchPath;
-    const gameProcess = spawn(quotedPath, [], {
+    // Mesma linha de comando do antigo game.exe: "main.exe -test -k<GetTickCount>".
+    // os.uptime() no Windows vem do GetTickCount64, com frações de segundo;
+    // "| 0" corta para 32 bits com sinal, como o %d do game.exe.
+    const tickCount = Math.round(os.uptime() * 1000) | 0;
+
+    // O manifesto do main.exe pede administrador. RunAsInvoker abre o jogo
+    // sem UAC, com os mesmos direitos do launcher.
+    const gameProcess = spawn(launchPath, ['-test', `-k${tickCount}`], {
+      argv0: exeName,
       cwd: launcherDir,
       detached: true,
       windowsHide: false,
-      env: process.env,
-      shell: true
+      env: { ...process.env, __COMPAT_LAYER: 'RunAsInvoker' }
     });
 
     gameProcesses.push(gameProcess);
@@ -1149,9 +1233,9 @@ async function checkAndInstallGameData() {
       return;
     }
 
-    // Se não existe, não tentar baixar automaticamente - assumir que usuário vai colocar manualmente
-    console.log('[Main] Game data folder not found, skipping automatic download');
-    logEvent('info', 'Game data folder not found - user must install client manually');
+    // Sem o cliente: a janela chama install-game-data quando estiver pronta para mostrar o progresso
+    console.log('[Main] Game data folder not found, waiting for the window to start the download');
+    logEvent('info', 'Game client not found - it will be downloaded');
     
     gameDataState.isInstalled = false;
     gameDataState.canUpdate = false;

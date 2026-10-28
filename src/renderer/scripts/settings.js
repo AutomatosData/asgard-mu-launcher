@@ -72,7 +72,6 @@ class SettingsManager {
             // Coletar valores dos campos
             const config = {
                 displayMode: document.querySelector('input[name="displayMode"]:checked')?.value || 'window',
-                resolution: document.getElementById('resolutionSelect')?.value || '1920x1080',
                 musicEnabled: document.getElementById('musicEnabled')?.checked || false,
                 soundEnabled: document.getElementById('soundEnabled')?.checked || false,
                 language: document.querySelector('input[name="language"]:checked')?.value || 'Eng'
@@ -131,13 +130,12 @@ class SettingsManager {
     async loadSettingsToForm(config) {
         // Carregar campos do HTML
         const displayModeInput = document.querySelector(`input[name="displayMode"][value="${config.displayMode || 'window'}"]`);
-        const resolutionSelect = document.getElementById('resolutionSelect');
         const musicEnabledCheckbox = document.getElementById('musicEnabled');
         const soundEnabledCheckbox = document.getElementById('soundEnabled');
         const languageInput = document.querySelector(`input[name="language"][value="${config.language || 'Eng'}"]`);
 
         if (displayModeInput) displayModeInput.checked = true;
-        if (resolutionSelect) resolutionSelect.value = config.resolution || '1920x1080';
+        // A resolução fica no LauncherOption.if (game-settings.js)
         if (musicEnabledCheckbox) musicEnabledCheckbox.checked = config.musicEnabled || false;
         if (soundEnabledCheckbox) soundEnabledCheckbox.checked = config.soundEnabled || false;
         if (languageInput) languageInput.checked = true;

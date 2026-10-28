@@ -61,6 +61,9 @@ const TRANSLATIONS = {
     'status.file': 'file',
     'status.verifying': 'Verifying downloaded files...',
     'status.ready': 'Ready to play',
+    'status.launcherCheck': 'Checking for a new launcher version...',
+    'status.launcherUpdate': 'Installing launcher {version} - the launcher will reopen',
+    'status.installFailed': 'Game download failed - click Play to try again',
 
     // Notificações
     'notify.initFailed': 'Failed to initialize AsgardMU: {error}',
@@ -81,6 +84,7 @@ const TRANSLATIONS = {
     'data.processing': 'Processing...',
     'data.downloadStart': 'Starting game data download...',
     'data.downloading': 'Downloading game data... {progress}%',
+    'data.downloadingSize': 'Downloading the game: {done} of {total} GB ({speed} MB/s)',
     'data.downloadDone': 'Download completed successfully!',
     'data.extractStart': 'Starting data extraction...',
     'data.extracting': 'Extracting files... {progress}%',
@@ -88,6 +92,8 @@ const TRANSLATIONS = {
     'data.exists': 'Game data already installed!',
     'data.installed': 'Game data installed successfully!',
     'data.error': 'Installation error: {error}',
+    'data.noSpace': 'Not enough disk space: {size} GB are needed',
+    'data.noClient': 'The game download is not available yet - try again later',
 
     // Processo principal (bandeja / notificações do Windows)
     'tray.show': 'Show Launcher',
@@ -149,6 +155,9 @@ const TRANSLATIONS = {
     'status.file': 'arquivo',
     'status.verifying': 'Verificando arquivos baixados...',
     'status.ready': 'Pronto para jogar',
+    'status.launcherCheck': 'Verificando nova versão do launcher...',
+    'status.launcherUpdate': 'Instalando o launcher {version} - o launcher vai abrir de novo',
+    'status.installFailed': 'Falha no download do jogo - clique em Jogar para tentar de novo',
 
     'notify.initFailed': 'Falha ao iniciar o AsgardMU: {error}',
     'notify.filesNeedUpdate': '{count} arquivos precisam ser atualizados',
@@ -167,6 +176,7 @@ const TRANSLATIONS = {
     'data.processing': 'Processando...',
     'data.downloadStart': 'Iniciando download dos dados do jogo...',
     'data.downloading': 'Baixando dados do jogo... {progress}%',
+    'data.downloadingSize': 'Baixando o jogo: {done} de {total} GB ({speed} MB/s)',
     'data.downloadDone': 'Download concluído com sucesso!',
     'data.extractStart': 'Iniciando extração dos dados...',
     'data.extracting': 'Extraindo arquivos... {progress}%',
@@ -174,6 +184,8 @@ const TRANSLATIONS = {
     'data.exists': 'Dados do jogo já instalados!',
     'data.installed': 'Dados do jogo instalados com sucesso!',
     'data.error': 'Erro na instalação: {error}',
+    'data.noSpace': 'Espaço em disco insuficiente: são necessários {size} GB',
+    'data.noClient': 'O download do jogo ainda não está disponível - tente mais tarde',
 
     'tray.show': 'Mostrar Launcher',
     'tray.launch': 'Iniciar Jogo',
@@ -234,6 +246,9 @@ const TRANSLATIONS = {
     'status.file': 'archivo',
     'status.verifying': 'Verificando archivos descargados...',
     'status.ready': 'Listo para jugar',
+    'status.launcherCheck': 'Buscando una nueva versión del launcher...',
+    'status.launcherUpdate': 'Instalando el launcher {version} - el launcher se abrirá de nuevo',
+    'status.installFailed': 'Error en la descarga del juego - haga clic en Jugar para intentar de nuevo',
 
     'notify.initFailed': 'Error al iniciar AsgardMU: {error}',
     'notify.filesNeedUpdate': '{count} archivos necesitan actualizarse',
@@ -252,6 +267,7 @@ const TRANSLATIONS = {
     'data.processing': 'Procesando...',
     'data.downloadStart': 'Iniciando la descarga de los datos del juego...',
     'data.downloading': 'Descargando datos del juego... {progress}%',
+    'data.downloadingSize': 'Descargando el juego: {done} de {total} GB ({speed} MB/s)',
     'data.downloadDone': '¡Descarga completada con éxito!',
     'data.extractStart': 'Iniciando la extracción de los datos...',
     'data.extracting': 'Extrayendo archivos... {progress}%',
@@ -259,6 +275,8 @@ const TRANSLATIONS = {
     'data.exists': '¡Los datos del juego ya están instalados!',
     'data.installed': '¡Datos del juego instalados con éxito!',
     'data.error': 'Error en la instalación: {error}',
+    'data.noSpace': 'Espacio en disco insuficiente: se necesitan {size} GB',
+    'data.noClient': 'La descarga del juego aún no está disponible - inténtelo más tarde',
 
     'tray.show': 'Mostrar Launcher',
     'tray.launch': 'Iniciar Juego',

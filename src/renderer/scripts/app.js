@@ -7,11 +7,11 @@ class MuDMG {
     constructor() {
         this.config = {};
         this.isUpdating = false;
+        this.playLocked = true; // Jogar travado até a verificação liberar (o HTML já começa disabled)
         this.connectedAccounts = 0;
         this.maxAccounts = Infinity; // Sem limite de contas
         this.accountCheckInterval = null;
         this.lastStatus = null; // { key, params } do status do rodapé, para retraduzir
-        this.lastDataProgress = null; // último progresso da instalação dos dados
         this.init();
     }
 
@@ -20,6 +20,9 @@ class MuDMG {
             // Carregar idioma salvo e retraduzir textos dinâmicos quando mudar
             await window.i18n.init();
             window.i18n.onChange(() => this.refreshTranslations());
+
+            // Título com a versão do package.json: "AsgardMU - v1.0.2"
+            this.showVersionInTitle();
 
             // Mostrar loader principal
             this.showMainLoader();
@@ -57,6 +60,18 @@ class MuDMG {
         } catch (error) {
             console.error('Failed to initialize:', error);
             this.showNotification(this.t('notify.initFailed', { error: error.message }), 'error');
+        }
+    }
+
+    async showVersionInTitle() {
+        try {
+            const version = await ipcRenderer.invoke('get-app-version');
+            const title = `AsgardMU - v${version}`;
+            document.title = title;
+            const titleText = document.querySelector('.title-bar .title');
+            if (titleText) titleText.textContent = title;
+        } catch (error) {
+            console.error('Failed to read launcher version:', error);
         }
     }
 
@@ -214,12 +229,33 @@ class MuDMG {
     }
 
     async checkForUpdates() {
+        // Uma verificação por vez (init e game-data-state podem chamar juntos)
+        if (this.checkingUpdates) return;
+        this.checkingUpdates = true;
+        this.disablePlayButton();
         try {
+            // Launcher novo publicado: o main baixa o instalador, abre e fecha o launcher
+            if (!this.launcherUpdateChecked) {
+                this.launcherUpdateChecked = true;
+                this.setStatus('status.launcherCheck');
+                const launcherUpdate = await ipcRenderer.invoke('check-launcher-update');
+                if (launcherUpdate && launcherUpdate.updating) {
+                    this.disablePlayButton();
+                    this.handleUpdateProgress({
+                        type: 'waiting',
+                        key: 'status.launcherUpdate',
+                        params: { version: launcherUpdate.version }
+                    });
+                    return;
+                }
+            }
+
             // Primeiro verificar se os dados do jogo estão prontos
             const gameDataState = await ipcRenderer.invoke('get-game-data-state');
             
             if (!gameDataState.success) {
                 console.error('Failed to get game data state:', gameDataState.error);
+                this.enablePlayButton();
                 return;
             }
             
@@ -240,18 +276,10 @@ class MuDMG {
                 return;
             }
             
-            // Se dados não estão instalados, não pode fazer update
+            // Sem o cliente: baixar o cliente completo e depois verificar os patches
             if (!state.isInstalled) {
-                console.log('Game data not installed, cannot check for updates');
-                this.handleUpdateProgress({
-                    type: 'waiting',
-                    key: 'status.waitingData'
-                });
-                
-                // Tentar novamente em 5 segundos
-                setTimeout(() => {
-                    this.checkForUpdates();
-                }, 5000);
+                console.log('Game data not installed, downloading the client');
+                this.installGameData();
                 return;
             }
             
@@ -293,6 +321,7 @@ class MuDMG {
                     type: 'ready',
                     key: 'status.checkFailed'
                 });
+                this.enablePlayButton();
             }
         } catch (error) {
             console.error('Update check failed:', error);
@@ -301,6 +330,9 @@ class MuDMG {
                 type: 'ready',
                 key: 'status.checkFailed'
             });
+            this.enablePlayButton();
+        } finally {
+            this.checkingUpdates = false;
         }
     }
 
@@ -345,8 +377,8 @@ class MuDMG {
     updatePlayButtonState() {
         const playBtn = document.getElementById('playBtn');
         if (playBtn) {
-            // Sem limite de contas - botão sempre habilitado
-            playBtn.disabled = false;
+            // Sem limite de contas; só desabilita durante verificação, instalação do cliente ou um patch
+            playBtn.disabled = Boolean(this.playLocked || this.isInstallingData || this.isUpdating);
             playBtn.title = this.t('play');
         }
     }
@@ -396,6 +428,7 @@ class MuDMG {
                     key: 'status.updateFailedWith',
                     params: { error: result.error }
                 });
+                this.enablePlayButton();
             }
         } catch (error) {
             console.error('Update failed:', error);
@@ -404,8 +437,44 @@ class MuDMG {
                 type: 'ready',
                 key: 'status.updateFailed'
             });
+            this.enablePlayButton();
         } finally {
             this.isUpdating = false;
+            this.updatePlayButtonState();
+        }
+    }
+
+    // Primeira instalação: baixa e extrai o cliente completo (progresso em data-installation-progress)
+    async installGameData() {
+        if (this.isInstallingData) return;
+        this.isInstallingData = true;
+        this.disablePlayButton();
+        this.handleUpdateProgress({
+            type: 'waiting',
+            key: 'status.waitingClient'
+        });
+
+        try {
+            const result = await ipcRenderer.invoke('install-game-data');
+            if (result.success) {
+                this.handleUpdateProgress({
+                    type: 'ready',
+                    key: 'status.dataReady'
+                });
+                setTimeout(() => {
+                    this.checkForUpdates();
+                }, 1000);
+            } else {
+                console.error('Game client installation failed:', result.error);
+                this.handleUpdateProgress({
+                    type: 'error',
+                    key: 'status.installFailed'
+                });
+                // O botão Jogar tenta de novo
+                this.enablePlayButton();
+            }
+        } finally {
+            this.isInstallingData = false;
         }
     }
 
@@ -520,44 +589,53 @@ class MuDMG {
         if (this.lastStatus) {
             this.setStatus(this.lastStatus.key, this.lastStatus.params);
         }
-        if (this.lastDataProgress) {
-            const currentStatus = document.getElementById('currentStatusText');
-            if (currentStatus) currentStatus.textContent = this.getDataProgressText(this.lastDataProgress);
-        }
         this.updatePlayButtonState();
     }
 
-    // Texto traduzido para os eventos de progresso da instalação dos dados (data-manager)
-    getDataProgressText(progress) {
+    // Chave e parâmetros do texto de cada evento da instalação dos dados (data-manager)
+    getDataProgressStatus(progress) {
+        const gb = bytes => (bytes / 1024 ** 3).toFixed(2);
         switch (progress.type) {
             case 'download-start':
-                return this.t('data.downloadStart');
+                return { key: 'data.downloadStart' };
             case 'download-progress':
-                return this.t('data.downloading', { progress: progress.progress || 0 });
-            case 'download-complete':
-                return this.t('data.downloadDone');
+                return {
+                    key: 'data.downloadingSize',
+                    params: {
+                        done: gb(progress.downloaded || 0),
+                        total: gb(progress.total || 0),
+                        speed: (progress.speed || 0).toFixed(1)
+                    }
+                };
             case 'extract-start':
-                return this.t('data.extractStart');
+                return { key: 'data.extractStart' };
             case 'extract-progress':
-                return this.t('data.extracting', { progress: progress.progress || 0 });
-            case 'extract-complete':
-                return this.t('data.extractDone');
+                return { key: 'data.extracting', params: { progress: progress.progress || 0 } };
             case 'installation-complete':
-            case 'success':
-                return this.t('data.installed');
+                return { key: 'data.installed' };
             case 'data-exists':
-                return this.t('data.exists');
+                return { key: 'data.exists' };
             case 'installation-error':
-            case 'error':
-                return this.t('data.error', { error: progress.error || progress.message || '' });
+                if (progress.code === 'NO_SPACE') return { key: 'data.noSpace', params: progress.params };
+                if (progress.code === 'NO_CLIENT') return { key: 'data.noClient' };
+                return { key: 'data.error', params: { error: progress.error || progress.message || '' } };
             default:
-                return progress.message || this.t('data.processing');
+                return { key: 'data.processing' };
         }
     }
 
     async launchGame() {
         console.log('Play button clicked - Starting game launch...');
         try {
+            // Cliente ainda não instalado (download falhou antes): tentar de novo
+            const gameDataState = await ipcRenderer.invoke('get-game-data-state');
+            if (gameDataState.success && !gameDataState.state.isInstalled) {
+                if (!gameDataState.state.isInstalling) {
+                    this.installGameData();
+                }
+                return;
+            }
+
             console.log('Invoking launch-game IPC...');
             const result = await ipcRenderer.invoke('launch-game');
             console.log('Launch result received:', result);
@@ -632,17 +710,13 @@ class MuDMG {
     }
 
     enablePlayButton() {
-        const playBtn = document.getElementById('playBtn');
-        if (playBtn) {
-            playBtn.disabled = false;
-        }
+        this.playLocked = false;
+        this.updatePlayButtonState();
     }
 
     disablePlayButton() {
-        const playBtn = document.getElementById('playBtn');
-        if (playBtn) {
-            playBtn.disabled = true;
-        }
+        this.playLocked = true;
+        this.updatePlayButtonState();
     }
 
     toggleCredentialsFields() {
@@ -665,152 +739,36 @@ class MuDMG {
         }, 5000);
     }
 
+    // Primeira instalação: o progresso usa as barras do rodapé
+    // (Download = etapa atual: download ou extração; Geral = instalação inteira)
     handleDataInstallationProgress(progress) {
-        console.log('[App] Data installation progress:', progress);
-        
-        switch (progress.type) {
-            case 'start':
-            case 'download-start':
-                this.showDataInstallationModal();
-                this.updateDataInstallationModal(progress);
-                break;
-                
-            case 'download-progress':
-                if (!document.getElementById('dataInstallationModal').classList.contains('show')) {
-                    this.showDataInstallationModal();
-                }
-                this.updateDataInstallationModal(progress);
-                break;
-                
-            case 'download-complete':
-            case 'extract-start':
-                this.updateDataInstallationModal(progress);
-                break;
-                
-            case 'extract-progress':
-                this.updateDataInstallationModal(progress);
-                break;
-                
-            case 'extract-complete':
-            case 'installation-complete':
-            case 'success':
-                this.updateDataInstallationModal(progress);
-                setTimeout(() => {
-                    this.hideDataInstallationModal();
-                    this.showNotification(this.getDataProgressText(progress), 'success');
-                }, 2000);
-                this.enablePlayButton();
-                break;
-                
-            case 'data-exists':
-                this.handleUpdateProgress({
-                    type: 'ready',
-                    key: 'data.exists'
-                });
-                this.enablePlayButton();
-                break;
-                
-            case 'installation-error':
-            case 'error':
-                this.updateDataInstallationModal(progress);
-                setTimeout(() => {
-                    this.hideDataInstallationModal();
-                    this.showNotification(this.getDataProgressText(progress), 'error');
-                }, 3000);
-                break;
-                
-            default:
-                console.log('[App] Unknown data installation progress type:', progress.type);
-                break;
+        const setBar = (fillId, textId, value) => {
+            const percent = Math.min(100, Math.max(0, Math.floor(value || 0)));
+            const fill = document.getElementById(fillId);
+            const text = document.getElementById(textId);
+            if (fill) fill.style.width = `${percent}%`;
+            if (text) text.textContent = `${percent}%`;
+        };
+
+        const status = this.getDataProgressStatus(progress);
+        this.setStatus(status.key, status.params);
+
+        if (['download-start', 'download-progress', 'extract-start', 'extract-progress'].includes(progress.type)) {
+            setBar('downloadProgressFooter', 'downloadTextFooter', progress.progress);
         }
-    }
-
-    showDataInstallationModal() {
-        const modal = document.getElementById('dataInstallationModal');
-        if (modal) {
-            modal.classList.add('show');
-            console.log('[App] Data installation modal shown');
+        if (typeof progress.overall === 'number') {
+            setBar('overallProgressFooter', 'overallTextFooter', progress.overall);
         }
-    }
-
-    hideDataInstallationModal() {
-        const modal = document.getElementById('dataInstallationModal');
-        if (modal) {
-            modal.classList.remove('show');
-            console.log('[App] Data installation modal hidden');
-        }
-    }
-
-    updateDataInstallationModal(progress) {
-        const modal = document.getElementById('dataInstallationModal');
-        if (!modal) return;
-
-        const downloadSection = document.getElementById('downloadProgressSection');
-        const currentStatus = document.getElementById('currentStatusText');
-
-        this.lastDataProgress = progress;
-        if (currentStatus) {
-            currentStatus.textContent = this.getDataProgressText(progress);
-        }
-
-        if (downloadSection) {
-            const downloadPercentage = document.getElementById('downloadProgressPercentage');
-            const downloadFill = document.getElementById('downloadProgressFill');
-            const downloadSpeed = document.getElementById('downloadSpeed');
-
-            if (progress.type === 'download-progress' || progress.type === 'download-start') {
-                if (downloadPercentage) {
-                    downloadPercentage.textContent = `${progress.progress || 0}%`;
-                }
-                if (downloadFill) {
-                    downloadFill.style.width = `${progress.progress || 0}%`;
-                }
-                if (downloadSpeed && progress.speed !== undefined) {
-                    const speedMBps = progress.speed.toFixed(1);
-                    downloadSpeed.textContent = `${speedMBps} MB/s`;
-                }
-            }
-        }
-
-        this.updateOverallProgress(progress);
-    }
-
-    updateOverallProgress(progress) {
-        const overallPercentage = document.getElementById('overallProgressPercentage');
-        const overallFill = document.getElementById('overallProgressFill');
-
-        let overallProgress = 0;
 
         switch (progress.type) {
-            case 'download-start':
-                overallProgress = 10;
-                break;
-            case 'download-progress':
-                overallProgress = 10 + (progress.progress * 0.4); // 10-50%
-                break;
-            case 'download-complete':
-            case 'extract-start':
-                overallProgress = 50;
-                break;
-            case 'extract-progress':
-                overallProgress = 50 + (progress.progress * 0.4); // 50-90%
-                break;
-            case 'extract-complete':
             case 'installation-complete':
-            case 'success':
-                overallProgress = 100;
+                setBar('downloadProgressFooter', 'downloadTextFooter', 100);
+                setBar('overallProgressFooter', 'overallTextFooter', 100);
+                this.showNotification(this.t('data.installed'), 'success');
                 break;
-            case 'error':
             case 'installation-error':
-                overallProgress = 0;
+                this.showNotification(this.t(status.key, status.params), 'error');
                 break;
-        }
-
-        if (overallPercentage) {
-            overallPercentage.textContent = `${Math.round(overallProgress)}%`;
-        }
-        if (overallFill) {
-            overallFill.style.width = `${overallProgress}%`;
         }
     }
 

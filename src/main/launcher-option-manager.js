@@ -64,6 +64,10 @@ class LauncherOptionManager {
       content += `Language:${options.Language !== undefined ? options.Language : 0}\n`;
 
       await fs.writeFile(filePath, content, 'utf8');
+      // Índice que o launcher gravou: outro valor no arquivo veio da tecla O do jogo
+      if (this.store && options.Language !== undefined) {
+        this.store.set('clientLanguageIndex', String(options.Language));
+      }
       console.log('LauncherOption.if saved successfully');
       return true;
     } catch (error) {
@@ -83,30 +87,13 @@ class LauncherOptionManager {
 
   // Convert from game settings format to LauncherOption.if format
   convertFromGameSettings(gameSettings) {
-    const resolutionMap = {
-      1: 1,   // 800x600
-      2: 2,   // 1024x768
-      3: 3,   // 1150x900
-      4: 4,   // 1280x768
-      6: 6,   // 1280x1024
-      5: 5,   // 1440x900
-      8: 8,   // 1600x900
-      7: 7,   // 1680x1050
-      10: 10, // 1680x1080
-      9: 9,   // 1600x1200
-      11: 11, // 1920x1080
-      12: 12, // 1920x1200
-      13: 13, // 1920x1440
-      15: 15, // 2560x1440
-      0: 0    // Max monitor support
-    };
-
     if (gameSettings.langSelection !== undefined && this.store) {
       this.store.set('gameLanguage', gameSettings.langSelection);
     }
 
     return {
-      DevModeIndex: gameSettings.resolution !== undefined ? resolutionMap[gameSettings.resolution] : 11,
+      // Posição na lista de modos do monitor filtrada como o jogo (src/main/display-modes.js)
+      DevModeIndex: Number.isInteger(gameSettings.resolution) ? gameSettings.resolution : 11,
       WindowMode: gameSettings.windowMode !== undefined ? gameSettings.windowMode : 1,
       ID: gameSettings.ID || '',
       Language: LauncherOptionManager.clientLanguage(gameSettings.langSelection).index
@@ -115,24 +102,6 @@ class LauncherOptionManager {
 
   // Convert from LauncherOption.if format to game settings format
   convertToGameSettings(launcherOptions) {
-    const resolutionMap = {
-      0: 0,
-      1: 1,
-      2: 2,
-      3: 3,
-      4: 4,
-      5: 5,
-      6: 6,
-      7: 7,
-      8: 8,
-      9: 9,
-      10: 10,
-      11: 11,
-      12: 12,
-      13: 13,
-      15: 15
-    };
-
     // Ordem das versões antigas do launcher, que gravavam o idioma só no
     // arquivo; depois da primeira execução o idioma fica no store
     const languageMap = {
@@ -141,8 +110,20 @@ class LauncherOptionManager {
       2: 'Spa'
     };
 
+    // A janela da tecla O do jogo (AsgardCustom.dll) também troca o idioma e grava o
+    // Language do arquivo; se ele não é mais o que o launcher gravou, vale o do jogo
+    const written = this.store && this.store.get('clientLanguageIndex');
+    if (written !== undefined && launcherOptions.Language !== undefined
+        && String(launcherOptions.Language) !== written) {
+      const fromGame = LauncherOptionManager.languageForClientIndex(launcherOptions.Language);
+      if (fromGame) {
+        this.store.set('gameLanguage', fromGame);
+        this.store.set('clientLanguageIndex', String(launcherOptions.Language));
+      }
+    }
+
     return {
-      resolution: launcherOptions.DevModeIndex !== undefined ? resolutionMap[parseInt(launcherOptions.DevModeIndex)] : 8,
+      resolution: launcherOptions.DevModeIndex !== undefined ? parseInt(launcherOptions.DevModeIndex) : 11,
       windowMode: launcherOptions.WindowMode !== undefined ? parseInt(launcherOptions.WindowMode) : 1,
       musicOnOFF: 1,
       soundOnOFF: 1,
@@ -158,6 +139,11 @@ class LauncherOptionManager {
   // Índice e código do cliente para um idioma do launcher (padrão: inglês)
   static clientLanguage(language) {
     return CLIENT_LANGUAGES[language] || CLIENT_LANGUAGES.Eng;
+  }
+
+  // Idioma do launcher para um índice do cliente (undefined se não existe)
+  static languageForClientIndex(index) {
+    return Object.keys(CLIENT_LANGUAGES).find(key => String(CLIENT_LANGUAGES[key].index) === String(index));
   }
 }
 

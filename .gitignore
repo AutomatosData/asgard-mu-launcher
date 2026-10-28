@@ -3,3 +3,6 @@ dist
 dist-limpo
 temp-build
 data
+.release-cache
+.release-local
+.release-out

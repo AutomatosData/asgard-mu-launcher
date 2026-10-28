@@ -73,30 +73,25 @@ BASE_URL: 'https://asgardmu.com.br/',
 LAUNCHER: {
   MAIN: 'new'                     // start screen → https://asgardmu.com.br/new
 },
-UPDATE: {
-  BASE_URL: 'https://updates.asgardmu.com.br/', // patches (Cloudflare R2)
-  MANIFEST: 'update.json'
-},
 GITHUB: {
   OWNER: 'AutomatosData',
   REPO: 'asgard-mu-client',
-  CLIENT_ASSET: 'AsgardMU-Client.zip' // full client (GitHub Releases)
+  CURRENT_TAG: 'current' // release with update.json (client, launcher, patches)
 },
 ```
 
 ### Configuration Options:
 - **BASE_URL**: Website URL (with trailing `/`)
 - **LAUNCHER.MAIN**: Page opened in the webview on the start screen (default: `new` → `https://asgardmu.com.br/new`)
-- **UPDATE.BASE_URL / UPDATE.MANIFEST**: Where the patch manifest and files are served (`https://updates.asgardmu.com.br/update.json`)
-- **GITHUB**: Repository and asset name of the full client ZIP, downloaded from `/releases/latest/download/AsgardMU-Client.zip`
+- **GITHUB**: Public repository whose releases hold everything the launcher downloads. The manifest is `/releases/download/current/update.json`; it lists the full client parts, the launcher setup and the patch files
 
 ## Usage
 
 ### **For Server Administrators:**
 1. Configure `url-config.js` with your server URLs
-2. Publish the full client with `create-github-release.ps1` and patches with `publish-update.ps1` (see *Distributing the Game* in README.en.md)
-3. Compile the launcher using the provided build script
-4. Distribute the executable to your players
+2. Build the installer with `npm run dist`
+3. Publish the full client, the launcher and patches with `npm run release:*` (see PUBLICAR.md)
+4. Share `AsgardMU-Setup.exe` with your players (Google Drive or the GitHub link)
 
 ## Build Instructions
 

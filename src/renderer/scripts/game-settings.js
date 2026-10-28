@@ -1,23 +1,8 @@
 class GameSettings {
     constructor() {
         this.registryPath = 'HKEY_CURRENT_USER\\Software\\Webzen\\Mu\\Config';
-        this.resolutionMap = {
-            '800x600': 1,
-            '1024x768': 2,
-            '1150x900': 3,
-            '1280x768': 4,
-            '1280x1024': 6,
-            '1440x900': 5,
-            '1600x900': 8,
-            '1680x1050': 7,
-            '1680x1080': 10,
-            '1600x1200': 9,
-            '1920x1080': 11,
-            '1920x1200': 12,
-            '1920x1440': 13,
-            '2560x1440': 15,
-            'MAX': 0
-        };
+        // Resoluções do monitor na ordem do jogo; o valor de cada opção é o DevModeIndex
+        this.displayModes = null;
         
         this.init();
     }
@@ -79,8 +64,38 @@ class GameSettings {
         document.getElementById(`${tabName}-tab`).classList.add('active');
     }
 
+    // Monta a lista de resoluções igual à do jogo (src/main/display-modes.js)
+    async loadDisplayModes() {
+        if (this.displayModes) return this.displayModes;
+        let modes = [], workArea = null;
+        try {
+            if (window.ipcRenderer) {
+                const result = await window.ipcRenderer.invoke('get-display-modes');
+                modes = result.modes || [];
+                workArea = result.workArea;
+            }
+        } catch (error) {
+            console.error('Failed to read display modes:', error);
+        }
+        const select = document.getElementById('resolutionSelect');
+        if (select) {
+            select.innerHTML = '';
+            for (const mode of modes) {
+                const option = document.createElement('option');
+                option.value = String(mode.index);
+                // Em modo janela o jogo encolhe o que não cabe na área livre da tela
+                const tooBig = workArea && (mode.width > workArea.width || mode.height > workArea.height);
+                option.textContent = `${mode.width}x${mode.height} (${mode.ratio})${tooBig ? ' *' : ''}`;
+                select.appendChild(option);
+            }
+        }
+        this.displayModes = modes;
+        return modes;
+    }
+
     async loadCurrentSettings() {
         try {
+            await this.loadDisplayModes();
             // Load current registry values
             const settings = await this.getRegistrySettings();
 
@@ -117,7 +132,7 @@ class GameSettings {
 
     getDefaultSettings() {
         return {
-            resolution: 8, // 1920x1080
+            resolution: 11, // DevModeIndex padrão do LauncherOption.if
             windowMode: 1, // Window mode
             musicOnOFF: 1, // Music enabled
             soundOnOFF: 1, // Sound enabled
@@ -129,12 +144,11 @@ class GameSettings {
 
     applySettingsToUI(settings) {
         // Apply resolution
-        const resolutionValue = this.getResolutionByValue(settings.resolution);
-        if (resolutionValue) {
-            const resolutionSelect = document.getElementById('resolutionSelect');
-            if (resolutionSelect) {
-                resolutionSelect.value = resolutionValue;
-            }
+        const resolutionSelect = document.getElementById('resolutionSelect');
+        if (resolutionSelect && resolutionSelect.options.length) {
+            const index = Number.isInteger(settings.resolution) ? settings.resolution : 0;
+            // Índice fora da lista: o jogo abre em 800x600, que é a primeira opção
+            resolutionSelect.value = index < resolutionSelect.options.length ? String(index) : '0';
         }
 
         // Apply display mode
@@ -156,13 +170,6 @@ class GameSettings {
         // Apply language
         const languageRadio = document.querySelector(`input[name="language"][value="${settings.langSelection}"]`);
         if (languageRadio) languageRadio.checked = true;
-    }
-
-    getResolutionByValue(value) {
-        for (const [resolution, val] of Object.entries(this.resolutionMap)) {
-            if (val === value) return resolution;
-        }
-        return '1920x1080'; // Default
     }
 
     async saveSettings() {
@@ -198,7 +205,7 @@ class GameSettings {
         // Resolution
         const resolutionSelect = document.getElementById('resolutionSelect');
         if (resolutionSelect && resolutionSelect.value) {
-            settings.resolution = this.resolutionMap[resolutionSelect.value];
+            settings.resolution = parseInt(resolutionSelect.value, 10);
         }
 
         // Display mode

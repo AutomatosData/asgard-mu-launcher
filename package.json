@@ -1,6 +1,6 @@
 {
   "name": "AsgardMU",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "description": "AsgardMU - Advanced Launcher",
   "main": "src/main/main.js",
   "scripts": {
@@ -9,10 +9,15 @@
     "build": "electron-builder",
     "build:win": "electron-builder --win --dir --publish=never",
     "pack": "electron-builder --dir",
-    "dist": "electron-builder --publish=never",
+    "dist": "electron-builder --win nsis --x64 --publish=never",
     "pack-win": "npx electron-packager . AsgardMU --platform=win32 --arch=x64 --out=dist --overwrite",
     "pack-win-npx": "npx electron-packager . AsgardMU --platform=win32 --arch=x64 --out=dist --overwrite",
-    "postinstall": "electron-builder install-app-deps"
+    "postinstall": "electron-builder install-app-deps",
+    "release:status": "node tools/release.js status",
+    "release:client": "node tools/release.js client",
+    "release:patch": "node tools/release.js patch",
+    "release:launcher": "node tools/release.js launcher",
+    "release:serve": "node tools/serve-local.js"
   },
   "keywords": [
     "mu-online",
@@ -59,34 +64,50 @@
     },
     "files": [
       "src/**/*",
+      "!src/font/**",
       "package.json"
-    ],
-    "extraResources": [
-      {
-        "from": "node_modules/axios",
-        "to": "node_modules/axios"
-      },
-      {
-        "from": "node_modules/electron-store",
-        "to": "node_modules/electron-store"
-      },
-      {
-        "from": "node_modules/fs-extra",
-        "to": "node_modules/fs-extra"
-      },
-      {
-        "from": "node_modules/node-stream-zip",
-        "to": "node_modules/node-stream-zip"
-      }
     ],
     "asar": true,
     "compression": "maximum",
+    "electronLanguages": [
+      "en-US",
+      "pt-BR",
+      "es"
+    ],
     "publish": null,
     "win": {
-      "target": "dir",
-      "signAndEditExecutable": false,
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "icon": "src/renderer/assets/icon.ico",
       "executableName": "AsgardMU"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "AsgardMU",
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "differentialPackage": false,
+      "installerIcon": "src/renderer/assets/icon.ico",
+      "uninstallerIcon": "src/renderer/assets/icon.ico",
+      "installerLanguages": [
+        "pt_BR",
+        "en_US",
+        "es_ES"
+      ],
+      "multiLanguageInstaller": true,
+      "include": "build/installer.nsh",
+      "artifactName": "AsgardMU-Setup-${version}.${ext}"
     },
     "mac": {
       "icon": "icon.ico"

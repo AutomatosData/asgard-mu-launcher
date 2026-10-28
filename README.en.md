@@ -24,11 +24,6 @@ To compile this project on Windows, you'll need to install the following softwar
 - **When needed?** Only if future dependencies require compiling native modules
 - **Can skip for now** - Current project doesn't use native modules requiring compilation
 
-### 4. Windows SDK (to apply admin manifest)
-- Usually installed with Visual Studio Build Tools
-- Default location: `C:\Program Files (x86)\Windows Kits\10\bin\`
-- Required for the `mt.exe` command used in build
-
 ---
 
 ##  Build Instructions
@@ -44,7 +39,7 @@ cd "path\to\launcher"
 ### Step 2: Install Dependencies
 Open PowerShell in the project folder and run:
 
-npm install && npm install --prefix update-creator
+npm install
 
 
 
@@ -93,7 +88,6 @@ This script will:
 - Clean previous builds
 - Copy only essential files
 - Build the project with ASAR (obfuscated code)
-- Apply admin manifest via UAC
 - Remove unnecessary files (~150 MB final)
 - Optimize locales (keep only en-US)
 
@@ -149,20 +143,15 @@ const URL_CONFIG = {
     MAIN: 'new'                     // Start screen page → https://asgardmu.com.br/new
   },
 
-  // Game patches (Cloudflare R2 bucket on a custom domain)
-  UPDATE: {
-    BASE_URL: 'https://updates.asgardmu.com.br/', // must end with "/"
-    MANIFEST: 'update.json'
-  },
-
-  // Full game client (GitHub Releases)
+  // Everything the launcher downloads: GitHub Releases of this public repository
   GITHUB: {
     OWNER: 'AutomatosData',
     REPO: 'asgard-mu-client',
-    CLIENT_ASSET: 'AsgardMU-Client.zip'
+    CURRENT_TAG: 'current'          // release that holds update.json
   },
 
   GAME_EXECUTABLE: 'main.exe',
+  GAME_LOADER: 'glu32.dll',
 };
 ```
 
@@ -171,59 +160,35 @@ const URL_CONFIG = {
 | What | URL | Hosted on |
 |---|---|---|
 | Start screen (webview) | `https://asgardmu.com.br/new` | Vercel (website) |
-| Patch manifest | `https://updates.asgardmu.com.br/update.json` | Cloudflare R2 |
-| Patch files | `https://updates.asgardmu.com.br/<file path>?v=<md5>` | Cloudflare R2 |
-| Full client (first install) | `https://github.com/AutomatosData/asgard-mu-client/releases/latest/download/AsgardMU-Client.zip` | GitHub Releases |
+| Manifest (client, launcher, patches) | `https://github.com/AutomatosData/asgard-mu-client/releases/download/current/update.json` | GitHub Releases |
+| Client parts, patch files, launcher setup | URLs inside `update.json`, relative to it | GitHub Releases |
 
 - To show another page on the start screen, change only `LAUNCHER.MAIN`.
-- The manifest is always requested with a `?t=<timestamp>` query so the Cloudflare cache never serves an old one; files use `?v=<md5>` so a patch that overwrites a file is never served stale.
+- The manifest is always requested with a `?t=<timestamp>` query, so it is never served stale.
 - If the manifest can't be downloaded, the launcher skips the update and lets the player start the game (the error goes to `Data/Launcher/Logs/update.log`).
+- `ASGARD_MANIFEST_URL` (environment variable) replaces the manifest URL, for local tests.
 
 ---
 
 ## Distributing the Game
 
-Game files are **not** hosted on Vercel (the free plan has limited bandwidth and no FTP). They are split in two:
+Step by step (Portuguese): **[PUBLICAR.md](PUBLICAR.md)**. Cost: zero.
 
-### Full client → GitHub Releases
+- **Installer** (`npm run dist` -> `dist/AsgardMU-Setup-<version>.exe`, ~80 MB): NSIS, per user, no UAC, the player can choose the folder. Players download it from Google Drive or from the fixed link `releases/download/current/AsgardMU-Setup.exe`.
+- **Full client**: on the first start the launcher downloads the `.zip` parts listed in `update.json` -> `client.parts` and extracts them next to `AsgardMU.exe` (`src/main/data-manager.js`; resumes broken downloads, checks size and MD5).
+- **Patches**: on every start the launcher checks the files in `update.json` -> `files` (size + MD5, with a hash cache in `Data/Launcher/hash-cache.json`) and downloads only what changed (`src/main/updater.js`).
+- **Launcher updates**: if `update.json` -> `launcher.version` is higher than the installed one, the launcher downloads the new setup, runs it silently in the same folder and quits; the setup starts the new launcher (`src/main/launcher-update.js`). `build/installer.nsh` keeps the game files during the update; uninstalling from Windows removes the whole folder.
 
-Used once, on first install (`src/main/data-manager.js` downloads and extracts the ZIP next to the launcher).
+Publishing (`tools/release.js`, uses the GitHub CLI):
 
 ```powershell
-.\create-github-release.ps1 -Version "v1.0.0" -GamePath "C:\path\to\game"
+npm run release:status     # what is published and what changed in the client folder
+npm run release:client     # full client (first install)
+npm run release:patch      # changed client files
+npm run release:launcher   # dist/AsgardMU-Setup-<version>.exe
 ```
 
-- Packs `Data`, `main.exe` and `Settings.ini` (edit `$itemsToInclude` in the script) into `AsgardMU-Client.zip` and publishes it as the latest release of `AutomatosData/asgard-mu-client`.
-- The asset name must always be `AsgardMU-Client.zip` (same as `GITHUB.CLIENT_ASSET`), so the `/releases/latest/download/` link keeps working.
-- Requires the GitHub CLI (`gh`) logged in with write access to the repository. Max 2 GB per file.
-
-### Patches → Cloudflare R2
-
-Used on every launcher start: the launcher compares local files with `update.json` (size + MD5) and downloads only what changed.
-
-**One-time setup:**
-
-1. Cloudflare dashboard → **R2** → create the bucket `asgard-mu-updates`.
-2. Bucket → **Settings** → **Custom Domains** → add `updates.asgardmu.com.br` (the DNS is already on Cloudflare, so the record is created automatically).
-3. R2 → **Manage API Tokens** → create a token with *Object Read & Write* for that bucket and note the *Access Key ID*, *Secret Access Key* and the account endpoint (`https://<account_id>.r2.cloudflarestorage.com`).
-4. Install rclone and create the remote `r2`:
-   ```powershell
-   winget install Rclone.Rclone
-   rclone config create r2 s3 provider=Cloudflare access_key_id=<KEY_ID> secret_access_key=<SECRET> endpoint=https://<account_id>.r2.cloudflarestorage.com acl=private
-   ```
-
-**Publishing a patch:**
-
-1. Open the **update-creator** (`update-creator/`), select the game folder and click create. It writes the `update` folder (`update.json` + files, keeping the folder structure).
-2. Upload it:
-   ```powershell
-   .\publish-update.ps1 -Source "C:\path\to\update"          # upload new/changed files
-   .\publish-update.ps1 -Source "C:\path\to\update" -DryRun  # only show what would be sent
-   .\publish-update.ps1 -Source "C:\path\to\update" -Prune   # also delete files removed from the patch
-   ```
-   The script validates the manifest, uploads the files first and `update.json` last, so players never get a manifest pointing to files that are not uploaded yet.
-
-R2 free tier: 10 GB of storage and no egress (download) fees.
+Add `-- --dry-run` to see what would be sent, or `-- --local` to publish to `.release-local/` and test with `npm run release:serve`.
 
 ---
 
@@ -237,8 +202,8 @@ R2 free tier: 10 GB of storage and no egress (download) fees.
 | `npm run build:win` | Build for Windows (without publishing) |
 | `npm run pack-win` | Quick packaging for Windows |
 | `.\build.ps1` | Clean and optimized build (recommended) |
-| `.\create-github-release.ps1` | Publish the full game client to GitHub Releases |
-| `.\publish-update.ps1` | Publish a game patch to Cloudflare R2 |
+| `npm run dist` | Build the installer (`dist/AsgardMU-Setup-<version>.exe`) |
+| `npm run release:*` | Publish client, patches and launcher (see [PUBLICAR.md](PUBLICAR.md)) |
 
 ---
 
@@ -264,14 +229,6 @@ npm config set python "C:\Python3x\python.exe"
 npm config set msbuild_path "C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\MSBuild\Current\Bin\MSBuild.exe"
 ```
 
-### Error: "mt.exe not found" (build.ps1)
-- Check if Windows SDK is installed
-- Adjust the path in `build.ps1` file at the `mt.exe` line:
-```powershell
-# Locate your installed version at:
-C:\Program Files (x86)\Windows Kits\10\bin\
-```
-
 ### Permission denied when running build.ps1
 ```powershell
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
@@ -291,7 +248,7 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 1. **First build**: May take 5 to 15 minutes
 2. **Disk space**: Reserve at least 2 GB of free space
 3. **Antivirus**: May need to add exception for the project folder
-4. **Privileges**: The launcher requests administrator permissions via UAC
+4. **Privileges**: The launcher runs as a normal user (no UAC). It starts `main.exe` with `__COMPAT_LAYER=RunAsInvoker`, so the game does not ask for administrator rights either
 5. **node_modules**: Don't commit this folder to Git (already in .gitignore)
 
 ---

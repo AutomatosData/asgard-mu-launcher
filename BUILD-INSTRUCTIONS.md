@@ -1,5 +1,14 @@
 # Instruções de Build - MU Online Launcher
 
+## 🎮 Instalador para os jogadores
+
+```powershell
+npm run dist
+```
+
+Gera `dist\AsgardMU-Setup-<versão>.exe`. Para publicar o instalador, o cliente e os patches, siga o [PUBLICAR.md](PUBLICAR.md).
+O `build.ps1` abaixo gera só a pasta do launcher, para copiar na pasta do jogo durante o desenvolvimento.
+
 ## 📦 Como Fazer o Build
 
 Execute o script de build:
@@ -56,8 +65,16 @@ Os logs são salvos em:
 **Causa**: O `MUOnline.exe` não está na mesma pasta que o `main.exe`  
 **Solução**: Copie TODO o conteúdo de `dist-limpo\MUOnline-win32-x64\` para a pasta do jogo
 
-### Erro de permissão ao executar
-**Solução**: O launcher já solicita privilégios de administrador via UAC automaticamente
+### O jogo abre, mas não conecta
+**Causa**: Falta o `glu32.dll` na pasta do jogo. Essa DLL carrega o `Main.dll` no `main.exe` (substitui o antigo `game.exe`)
+**Solução**: Copie `glu32.dll` (build de `Asgard-Mu-ServerS21\MainLoader`) para a pasta do jogo
+
+### O jogo abre, mas sem FPS alto, sem o card do Discord do AsgardMU
+**Causa**: Falta o `AsgardCustom.dll` na pasta do jogo. O `glu32.dll` carrega essa DLL antes do `Main.dll`; ela tem todas as melhorias do cliente
+**Solução**: Copie `AsgardCustom.dll` (build de `Asgard-Mu-ServerS21\AsgardCustom`) para a pasta do jogo. A `discord_game_sdk.dll` deve ser a original do Discord
+
+### Privilégios
+O launcher e o jogo rodam sem administrador (sem UAC). O launcher abre o `main.exe` com `__COMPAT_LAYER=RunAsInvoker`
 
 ### Jogo não inicia
 **Solução**: Verifique os logs em `Data\Launcher\Logs\app.log`

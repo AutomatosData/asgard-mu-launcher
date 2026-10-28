@@ -6,13 +6,96 @@ const { ipcMain } = require('electron');
 const URL_CONFIG = require('../shared/url-config');
 const languagePack = require('./language-pack');
 
+// Manifesto (update.json, gerado por tools/release.js):
+//   client   -> cliente completo em partes .zip (primeira instalação, data-manager.js)
+//   launcher -> versão e instalador atuais do launcher (launcher-update.js)
+//   files    -> arquivos alterados depois do cliente completo: { path, size, hash, url, keep }
+//               keep = preferência do jogador (ex.: configs.ini): baixa só se faltar
 class Updater {
   constructor() {
-    this.serverUrl = '';
+    this.manifestUrl = '';
     this.gamePath = '';
     this.manifest = null;
     this.downloadQueue = [];
     this.isUpdating = false;
+    // MD5 já calculado por arquivo: { path: [size, mtimeMs, hash] }
+    this.hashCache = null;
+  }
+
+  // Baixa o update.json. Lança erro se falhar (data-manager e launcher-update precisam dele).
+  async fetchManifest() {
+    const manifestUrl = URL_CONFIG.UPDATE_MANIFEST_URL;
+    const response = await axios.get(manifestUrl, {
+      timeout: 15000,
+      params: { t: Date.now() } // sempre buscar o manifest mais recente (sem cache)
+    });
+
+    // O GitHub entrega o update.json como application/octet-stream
+    const data = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+    if (!data || typeof data !== 'object') {
+      throw new Error('Invalid update manifest');
+    }
+
+    let filesArray;
+    if (Array.isArray(data)) {
+      filesArray = data;
+    } else if (Array.isArray(data.files)) {
+      filesArray = data.files;
+    } else {
+      filesArray = [];
+    }
+
+    this.manifestUrl = manifestUrl;
+    this.manifest = {
+      version: data.version || '',
+      client: data.client || null,
+      launcher: data.launcher || null,
+      files: filesArray
+    };
+    return this.manifest;
+  }
+
+  // Caminho local de um arquivo do manifest; null se ele sair da pasta do jogo
+  resolveGamePath(gamePath, filePath) {
+    const root = path.resolve(gamePath);
+    const localPath = path.resolve(root, filePath);
+    return localPath.startsWith(root + path.sep) ? localPath : null;
+  }
+
+  getHashCachePath() {
+    return path.join(this.gamePath, 'Data', 'Launcher', 'hash-cache.json');
+  }
+
+  async loadHashCache() {
+    if (this.hashCache) return;
+    try {
+      this.hashCache = await fs.readJson(this.getHashCachePath());
+    } catch {
+      this.hashCache = {};
+    }
+  }
+
+  async saveHashCache() {
+    if (!this.hashCache) return;
+    try {
+      await fs.outputJson(this.getHashCachePath(), this.hashCache);
+    } catch (error) {
+      this.logUpdateEvent('warning', `Failed to save hash cache: ${error.message}`);
+    }
+  }
+
+  // MD5 do arquivo; reaproveita o cache se o tamanho e a data de modificação não mudaram
+  async getCachedFileHash(filePath, stats) {
+    const key = path.relative(this.gamePath, filePath).toLowerCase();
+    const cached = this.hashCache && this.hashCache[key];
+    if (cached && cached[0] === stats.size && cached[1] === stats.mtimeMs) {
+      return cached[2];
+    }
+    const hash = await this.calculateFileHash(filePath);
+    if (this.hashCache) {
+      this.hashCache[key] = [stats.size, stats.mtimeMs, hash];
+    }
+    return hash;
   }
 
   async calculateFileHash(filePath) {
@@ -45,16 +128,16 @@ class Updater {
 
   async validateLocalFile(filePath, expectedHash, expectedSize) {
     try {
-      if (!await fs.pathExists(filePath)) {
+      const stats = await fs.stat(filePath).catch(() => null);
+      if (!stats || !stats.isFile()) {
         return false;
       }
 
-      const actualSize = await this.getFileSize(filePath);
-      if (actualSize !== expectedSize) {
+      if (stats.size !== expectedSize) {
         return false;
       }
 
-      const actualHash = await this.calculateFileHash(filePath);
+      const actualHash = await this.getCachedFileHash(filePath, stats);
       return actualHash === expectedHash;
     } catch (error) {
       this.logUpdateEvent('error', `Validation error: ${error.message}`);
@@ -62,39 +145,17 @@ class Updater {
     }
   }
 
-  // serverUrl = base dos patches (pasta que contém update.json e os arquivos)
-  normalizeBaseUrl(serverUrl) {
-    const base = serverUrl || URL_CONFIG.UPDATE_URL;
-    return base.endsWith('/') ? base : `${base}/`;
-  }
-
-  // URL de um arquivo do manifest. "?v=hash" evita que o cache da Cloudflare
-  // entregue a versão antiga quando um patch sobrescreve o mesmo caminho.
+  // URL de um arquivo do manifest. file.url pode ser absoluta (GitHub) ou relativa
+  // ao update.json; sem file.url, o arquivo fica ao lado do update.json com o mesmo path.
   getFileUrl(file) {
     const encodedPath = file.path.split('/').map(encodeURIComponent).join('/');
-    return `${this.serverUrl}${encodedPath}?v=${file.hash}`;
+    return new URL(file.url || `${encodedPath}?v=${file.hash}`, this.manifestUrl).href;
   }
 
+  // serverUrl e gamePath ficam por compatibilidade com o IPC; a URL vem de url-config.js
   async downloadManifest(serverUrl, gamePath) {
     try {
-      const baseUrl = this.normalizeBaseUrl(serverUrl);
-      const response = await axios.get(`${baseUrl}${URL_CONFIG.UPDATE.MANIFEST}`, {
-        timeout: 10000,
-        params: { t: Date.now() } // sempre buscar o manifest mais recente (sem cache)
-      });
-      
-      let filesArray;
-      if (Array.isArray(response.data)) {
-        filesArray = response.data;
-      } else if (response.data.files && Array.isArray(response.data.files)) {
-        filesArray = response.data.files;
-      } else {
-        filesArray = [];
-      }
-      
-      this.manifest = { files: filesArray };
-      this.serverUrl = baseUrl;
-      
+      await this.fetchManifest();
       return { success: true, manifest: this.manifest, source: 'server' };
     } catch (error) {
       this.logUpdateEvent('error', `Failed to download manifest from server: ${error.message}`);
@@ -122,6 +183,7 @@ class Updater {
     }
 
     this.gamePath = gamePath;
+    await this.loadHashCache();
     const filesToUpdate = [];
 
     // Apenas arquivos do launcher/Electron são excluídos. Arquivos do jogo (.bmd, .ozj, .ozt, etc.)
@@ -151,13 +213,25 @@ class Updater {
 
       // Caminho usado exatamente como no manifest (preserva maiúsculas/minúsculas)
       // Ex.: .OZJ, .Ozj, .ozj são todos suportados conforme vier no update.json
-      const localPath = path.join(gamePath, file.path);
+      const localPath = this.resolveGamePath(gamePath, file.path);
+      if (!localPath) {
+        this.logUpdateEvent('warning', `Skipping path outside the game folder: ${file.path}`);
+        continue;
+      }
+
+      // Preferência do jogador: só baixa se o arquivo não existir
+      if (file.keep && await fs.pathExists(localPath)) {
+        continue;
+      }
+
       const isValid = await this.validateLocalFile(localPath, file.hash, file.size);
-      
+
       if (!isValid) {
         filesToUpdate.push(file);
       }
     }
+
+    await this.saveHashCache();
 
     return {
       success: true,
@@ -170,7 +244,10 @@ class Updater {
   async downloadFile(file, progressCallback) {
     try {
       // Mesmo path do manifest (case-sensitive): .OZJ, .Ozj, .ozj etc.
-      const localPath = path.join(this.gamePath, file.path);
+      const localPath = this.resolveGamePath(this.gamePath, file.path);
+      if (!localPath) {
+        throw new Error('path outside the game folder');
+      }
       const localDir = path.dirname(localPath);
 
       await fs.ensureDir(localDir);
@@ -206,6 +283,10 @@ class Updater {
           resolve({ success: true });
         });
         writer.on('error', (error) => {
+          reject(error);
+        });
+        response.data.on('error', (error) => {
+          writer.destroy();
           reject(error);
         });
         response.data.pipe(writer);
