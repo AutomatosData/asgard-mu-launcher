@@ -6,6 +6,7 @@ const path = require('path');
 const fs = require('fs-extra');
 const axios = require('axios');
 const updater = require('./updater');
+const installDirs = require('./install-dirs');
 
 // Nova tentativa da mesma versão só depois deste tempo (evita laço se o instalador falhar)
 const RETRY_AFTER_MS = 30 * 60 * 1000;
@@ -31,12 +32,14 @@ class LauncherUpdate {
     return false;
   }
 
+  // Pasta escolhida no instalador (/D=): a pasta do jogo. O launcher fica em "Launcher\".
   getInstallDir() {
-    return path.dirname(process.execPath);
+    return installDirs.gameDir();
   }
 
+  // O instalador põe o desinstalador junto do launcher (build/installer.nsh)
   isInstalledBySetup() {
-    const uninstaller = path.join(this.getInstallDir(), `Uninstall ${app.getName()}.exe`);
+    const uninstaller = path.join(installDirs.launcherDir(), `Uninstall ${app.getName()}.exe`);
     return fs.existsSync(uninstaller);
   }
 

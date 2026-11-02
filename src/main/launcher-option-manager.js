@@ -1,5 +1,6 @@
 const fs = require('fs-extra');
 const path = require('path');
+const installDirs = require('./install-dirs');
 
 // Idioma do launcher -> idioma do cliente. index é o ID em
 // Data/Custom/LangManager.xml (LauncherOption.if Language) e code é a pasta
@@ -18,8 +19,7 @@ class LauncherOptionManager {
   }
 
   getFilePath() {
-    const execDir = path.dirname(process.execPath);
-    return path.join(execDir, this.fileName);
+    return path.join(installDirs.gameDir(), this.fileName);
   }
 
   async readLauncherOptions() {

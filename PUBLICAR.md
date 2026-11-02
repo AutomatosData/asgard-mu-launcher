@@ -9,6 +9,7 @@ O **Google Drive** guarda só o instalador, para o jogador baixar pelo navegador
 1. O jogador baixa `AsgardMU-Setup.exe` (Google Drive ou link do GitHub) e instala.
    - Não pede administrador. Pasta padrão: `%LOCALAPPDATA%\Programs\AsgardMU`. O jogador pode escolher outra pasta.
    - Cria atalho na área de trabalho e no menu Iniciar.
+   - O launcher (Electron) fica na pasta oculta `Launcher\`. Na pasta do jogo fica um `AsgardMU.exe` pequeno que o abre (`build/stub`, compilar com `build/stub/build.bat` se mudar). O launcher oculta as DLLs do jogo, `Data` e `ErrorLog` (`src/main/install-dirs.js`). O jogador vê só `AsgardMU.exe` e os `.ini`.
 2. Na primeira abertura, o launcher baixa o cliente completo (partes `.zip`) e extrai na mesma pasta.
    - Se a internet cair, o download continua de onde parou.
    - O launcher confere o tamanho e o MD5 de cada parte.

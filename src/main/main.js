@@ -146,13 +146,14 @@ const URL_CONFIG = require('../shared/url-config');
 const I18N = require('../shared/i18n');
 const languagePack = require('./language-pack');
 const gameGuard = require('./game-guard');
+const installDirs = require('./install-dirs');
 
 // Idioma da interface (mesmo valor de langSelection em LauncherOption.if)
 let currentLanguage = I18N.DEFAULT_LANGUAGE;
 const t = (key, params) => I18N.translate(currentLanguage, key, params);
 
 const defaultConfig = {
-  gamePath: isDev ? process.cwd() : path.dirname(process.execPath),
+  gamePath: isDev ? process.cwd() : installDirs.gameDir(),
   serverUrl: URL_CONFIG.UPDATE_URL
 };
 
@@ -168,7 +169,8 @@ const gameExecutable = () => URL_CONFIG.GAME_EXECUTABLE || 'main.exe';
 function getGameDirectory() {
   // SEMPRE verificar primeiro o diretório onde o launcher está rodando
   // pois esse é o diretório correto onde o jogo está instalado
-  const execDir = path.dirname(process.execPath);
+  // (ou a pasta acima, quando o launcher fica em "Launcher\", ver install-dirs.js)
+  const execDir = installDirs.gameDir();
   const exeName = gameExecutable();
 
   // Se o executável do jogo está no diretório do executável, usar e atualizar o store
@@ -467,6 +469,8 @@ app.whenReady().then(() => {
   windowDetector = new WindowDetector();
   
   dataManager = new DataManager(getGameDirectory);
+  // Pasta do jogo limpa: DLLs, Data e ErrorLog ocultos (só com o launcher em "Launcher\")
+  installDirs.setGameFilesHidden(true);
 
   launcherUpdate = new LauncherUpdate({ store, logEvent });
 
@@ -1011,6 +1015,7 @@ ipcMain.handle('install-game-data', async () => {
     gameDataState.isInstalling = true;
     // Reinstalação: o main.exe oculto (game-guard.js) não pode ser sobrescrito
     await gameGuard.setHidden(path.join(getGameDirectory(), gameExecutable()), false);
+    await installDirs.setGameFilesHidden(false);
     await dataManager.ensureDataFolder((progress) => {
       gameDataState.installationProgress = progress;
       if (mainWindow) {
@@ -1020,6 +1025,7 @@ ipcMain.handle('install-game-data', async () => {
 
     gameDataState.isInstalled = true;
     gameDataState.canUpdate = true;
+    await installDirs.setGameFilesHidden(true);
     logEvent('info', 'Game client installed');
     return { success: true };
   } catch (error) {
@@ -1266,7 +1272,7 @@ async function checkAndInstallGameData() {
 }
 
 function getLogDirectory() {
-  const baseDir = app.isPackaged ? path.dirname(process.execPath) : path.join(__dirname, '..', '..');
+  const baseDir = app.isPackaged ? installDirs.gameDir() : path.join(__dirname, '..', '..');
   return path.join(baseDir, 'Data', 'Launcher', 'Logs');
 }
 

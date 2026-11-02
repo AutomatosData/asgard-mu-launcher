@@ -5,6 +5,7 @@ const StreamZip = require('node-stream-zip');
 const axios = require('axios');
 const URL_CONFIG = require('../shared/url-config');
 const updater = require('./updater');
+const installDirs = require('./install-dirs');
 
 // Tentativas por parte; cada nova tentativa continua de onde parou (HTTP Range)
 const MAX_ATTEMPTS = 5;
@@ -22,7 +23,7 @@ const DOWNLOAD_WEIGHT = 0.8;
 class DataManager {
     // getGameDirectory: função do main.js que devolve a pasta do jogo
     constructor(getGameDirectory) {
-        this.getGameDirectory = getGameDirectory || (() => path.dirname(process.execPath));
+        this.getGameDirectory = getGameDirectory || installDirs.gameDir;
     }
 
     async checkDataFolderExists() {

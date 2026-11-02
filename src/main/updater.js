@@ -6,6 +6,7 @@ const { ipcMain } = require('electron');
 const URL_CONFIG = require('../shared/url-config');
 const languagePack = require('./language-pack');
 const gameGuard = require('./game-guard');
+const installDirs = require('./install-dirs');
 
 // Manifesto (update.json, gerado por tools/release.js):
 //   client   -> cliente completo em partes .zip (primeira instalação, data-manager.js)
@@ -408,7 +409,7 @@ class Updater {
     const timestamp = new Date().toISOString();
     const logEntry = `[${timestamp}] [${level.toUpperCase()}] ${message}\n`;
     const { app } = require('electron');
-    const baseDir = app.isPackaged ? path.dirname(process.execPath) : path.join(__dirname, '..', '..');
+    const baseDir = app.isPackaged ? installDirs.gameDir() : path.join(__dirname, '..', '..');
     const logDir = path.join(baseDir, 'Data', 'Launcher', 'Logs');
     const logPath = path.join(logDir, 'update.log');
     fs.ensureDirSync(logDir);
@@ -466,10 +467,12 @@ if (typeof ipcMain !== 'undefined') {
 
       // O main.exe fica oculto (game-guard.js): oculto, o Windows não deixa sobrescrever
       await gameGuard.setHidden(gameExePath, false);
+      await installDirs.setGameFilesHidden(false);
       const result = await updater.performUpdate(gamePath, serverUrl, (progress) => {
         event.sender.send('update-progress', progress);
       });
       await gameGuard.setHidden(gameExePath, true);
+      await installDirs.setGameFilesHidden(true);
 
       return result;
     } catch (error) {

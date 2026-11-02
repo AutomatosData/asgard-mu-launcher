@@ -56,7 +56,9 @@ const MAX_ASSETS = 900;
 // ===== REGRAS DOS ARQUIVOS DO CLIENTE =====
 // Caminhos relativos à pasta do cliente, com "/" e em minúsculas.
 
-// Arquivos do launcher (Electron): vêm do instalador, nunca do cliente
+// Arquivos do launcher (Electron): vêm do instalador, nunca do cliente. O instalador põe o
+// launcher em "Launcher/" e um AsgardMU.exe pequeno na raiz (build/installer.nsh); as
+// instalações antigas têm os arquivos na raiz
 const LAUNCHER_FILES = new Set([
   'asgardmu.exe', 'uninstall asgardmu.exe', 'chrome_100_percent.pak', 'chrome_200_percent.pak',
   'resources.pak', 'icudtl.dat', 'snapshot_blob.bin', 'v8_context_snapshot.bin', 'version',
@@ -64,7 +66,7 @@ const LAUNCHER_FILES = new Set([
   'd3dcompiler_47.dll', 'dxcompiler.dll', 'dxil.dll', 'libegl.dll', 'libglesv2.dll',
   'license.electron.txt', 'licenses.chromium.html'
 ]);
-const LAUNCHER_DIRS = ['resources/', 'locales/'];
+const LAUNCHER_DIRS = ['launcher/', 'resources/', 'locales/'];
 
 // Nunca publicados: logs, backups, dados locais do jogador e do desenvolvedor
 const IGNORE = [
