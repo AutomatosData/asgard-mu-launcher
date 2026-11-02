@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const { ipcMain } = require('electron');
 const URL_CONFIG = require('../shared/url-config');
 const languagePack = require('./language-pack');
+const gameGuard = require('./game-guard');
 
 // Manifesto (update.json, gerado por tools/release.js):
 //   client   -> cliente completo em partes .zip (primeira instalação, data-manager.js)
@@ -463,9 +464,12 @@ if (typeof ipcMain !== 'undefined') {
       
       await languagePack.restore(gamePath);
 
+      // O main.exe fica oculto (game-guard.js): oculto, o Windows não deixa sobrescrever
+      await gameGuard.setHidden(gameExePath, false);
       const result = await updater.performUpdate(gamePath, serverUrl, (progress) => {
         event.sender.send('update-progress', progress);
       });
+      await gameGuard.setHidden(gameExePath, true);
 
       return result;
     } catch (error) {

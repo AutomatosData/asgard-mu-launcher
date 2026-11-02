@@ -145,6 +145,7 @@ let launcherUpdate;
 const URL_CONFIG = require('../shared/url-config');
 const I18N = require('../shared/i18n');
 const languagePack = require('./language-pack');
+const gameGuard = require('./game-guard');
 
 // Idioma da interface (mesmo valor de langSelection em LauncherOption.if)
 let currentLanguage = I18N.DEFAULT_LANGUAGE;
@@ -1008,6 +1009,8 @@ ipcMain.handle('install-game-data', async () => {
     console.log('[Main] Game client installation started');
     logEvent('info', `Game client installation started in ${getGameDirectory()}`);
     gameDataState.isInstalling = true;
+    // Reinstalação: o main.exe oculto (game-guard.js) não pode ser sobrescrito
+    await gameGuard.setHidden(path.join(getGameDirectory(), gameExecutable()), false);
     await dataManager.ensureDataFolder((progress) => {
       gameDataState.installationProgress = progress;
       if (mainWindow) {
@@ -1119,7 +1122,8 @@ ipcMain.handle('launch-game', async () => {
 
     // O manifesto do main.exe pede administrador. RunAsInvoker abre o jogo
     // sem UAC, com os mesmos direitos do launcher.
-    const gameProcess = spawn(launchPath, ['-test', `-k${tickCount}`], {
+    // "-a<código>": a AsgardCustom.dll fecha o jogo aberto sem o launcher (game-guard.js)
+    const gameProcess = spawn(launchPath, ['-test', `-k${tickCount}`, `-a${gameGuard.launchToken(tickCount)}`], {
       argv0: exeName,
       cwd: launcherDir,
       detached: true,
@@ -1128,6 +1132,7 @@ ipcMain.handle('launch-game', async () => {
     });
 
     gameProcesses.push(gameProcess);
+    gameGuard.setHidden(launchPath, true);
 
     gameProcess.stdout?.on('data', d => {
       console.log(`STDOUT: ${d}`);
