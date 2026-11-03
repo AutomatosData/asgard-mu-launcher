@@ -142,11 +142,14 @@ let helpHotkey;
 
 let launcherUpdate;
 
+let crashReport;
+
 const URL_CONFIG = require('../shared/url-config');
 const I18N = require('../shared/i18n');
 const languagePack = require('./language-pack');
 const gameGuard = require('./game-guard');
 const installDirs = require('./install-dirs');
+const CrashReport = require('./crash-report');
 
 // Idioma da interface (mesmo valor de langSelection em LauncherOption.if)
 let currentLanguage = I18N.DEFAULT_LANGUAGE;
@@ -497,6 +500,21 @@ app.whenReady().then(() => {
     url: URL_CONFIG.HELP_URL,
     gameProcess: gameExecutable(),
     icon: resolveAsset('icon.ico'),
+    logEvent
+  });
+
+  // Jogo travou: pergunta se o jogador quer enviar os dados do erro à equipe
+  crashReport = new CrashReport({
+    getGameDirectory,
+    reportUrl: URL_CONFIG.CRASH_REPORT_URL,
+    reportToken: URL_CONFIG.CRASH.TOKEN,
+    launcherVersion: app.getVersion(),
+    getHardwareId: () => (antiCheat ? antiCheat.hardwareId : null),
+    getCharacter: pid => (antiCheat ? antiCheat.characterOfPid(pid) : null),
+    t,
+    getLanguage: () => currentLanguage,
+    icon: resolveAsset('icon.ico'),
+    store,
     logEvent
   });
 
@@ -1138,6 +1156,7 @@ ipcMain.handle('launch-game', async () => {
     });
 
     gameProcesses.push(gameProcess);
+    const gameStartedAt = Date.now();
     gameGuard.setHidden(launchPath, true);
 
     gameProcess.stdout?.on('data', d => {
@@ -1153,6 +1172,11 @@ ipcMain.handle('launch-game', async () => {
     gameProcess.on('exit', code => {
       console.log(`Game process exited with code: ${code}`);
       logEvent('info', `Game process exited with code: ${code}`);
+
+      // Crash: o cliente grava ErrorLog\stack_*.txt / crash_*.dmp; o launcher pergunta se envia
+      if (crashReport) {
+        crashReport.onGameExit({ pid: gameProcess.pid, exitCode: code, startedAt: gameStartedAt });
+      }
       
       const index = gameProcesses.indexOf(gameProcess);
       if (index > -1) {

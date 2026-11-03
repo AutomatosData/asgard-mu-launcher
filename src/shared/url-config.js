@@ -70,6 +70,15 @@ const URL_CONFIG = {
     SCAN_INTERVAL_MS: 7000
   },
 
+  // ===== RELATÓRIO DE CRASH =====
+  // Quando o jogo trava, o launcher pergunta ao jogador e faz POST do relatório em
+  // BASE_URL + REPORT_PATH (src/main/crash-report.js). TOKEN, quando preenchido, deve ser
+  // igual à variável CRASH_REPORT_TOKEN (ou ANTICHEAT_TOKEN) do site.
+  CRASH: {
+    REPORT_PATH: 'api/crash/report',
+    TOKEN: ''
+  },
+
   // ===== CDN EXTERNOS =====
   CDN: {
     // Font Awesome (ícones)
@@ -103,6 +112,11 @@ const URL_CONFIG = {
   // Endpoint do histórico de anti-cheat (BASE_URL + REPORT_PATH)
   get ANTICHEAT_REPORT_URL() {
     return `${this.BASE_URL}${this.ANTICHEAT.REPORT_PATH}`;
+  },
+
+  // Endpoint do relatório de crash (BASE_URL + CRASH.REPORT_PATH)
+  get CRASH_REPORT_URL() {
+    return `${this.BASE_URL}${this.CRASH.REPORT_PATH}`;
   },
 
   // ===== FUNÇÕES AUXILIARES =====

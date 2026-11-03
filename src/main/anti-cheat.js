@@ -69,6 +69,8 @@ class AntiCheat {
     this.hardwareId = this.computeHardwareId();
     // Evita reportar o mesmo ofensor repetidamente dentro de uma sessão.
     this.reported = new Set();
+    // PID do main.exe -> último personagem visto no título da janela (crash-report.js)
+    this.gameCharacters = new Map();
   }
 
   /** Mescla as regras padrão com um JSON opcional ({ processTokens, windowTokens }). */
@@ -129,6 +131,7 @@ class AntiCheat {
     }
 
     const characters = this.extractCharacters(processes);
+    this.rememberGameCharacters(processes);
     const hits = [];
 
     for (const proc of processes) {
@@ -187,6 +190,20 @@ class AntiCheat {
       if (match && !names.includes(match[1])) names.push(match[1]);
     }
     return names;
+  }
+
+  /** Guarda o último personagem visto em cada main.exe (PID), para o relatório de crash. */
+  rememberGameCharacters(processes) {
+    for (const proc of processes) {
+      if (!GAME_PROCESS_NAMES.includes((proc.name || '').toLowerCase())) continue;
+      const match = (proc.title || '').match(/Name:\s*([a-zA-Z0-9_-]{3,20})/i);
+      if (match) this.gameCharacters.set(proc.pid, match[1]);
+    }
+  }
+
+  /** Último personagem visto no main.exe com este PID (ou null). */
+  characterOfPid(pid) {
+    return this.gameCharacters.get(pid) || null;
   }
 
   /** Trata os ofensores: encerra o jogo, reporta e notifica a interface. */

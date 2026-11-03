@@ -104,7 +104,20 @@ const TRANSLATIONS = {
     'tray.minimized': 'AsgardMU minimized to system tray',
     'tray.characterSelected': 'Character Selected',
     'tray.characterSelectedMsg': 'Character "{name}" has been selected',
-    'menu.inspect': 'Inspect'
+    'menu.inspect': 'Inspect',
+
+    // Relatório de crash (src/main/crash-report.js)
+    'crash.title': 'The game closed with an error',
+    'crash.message': 'AsgardMU stopped unexpectedly. Do you want to send the error data to the AsgardMU Team? We read every report and use it to fix crashes.',
+    'crash.details': 'The report has the game error logs, the crash file, the launcher and DLL versions, your Windows, processor, graphics card and memory, the computer name and the character name. It has no password and no personal files.',
+    'crash.commentLabel': 'What were you doing when the game closed? (optional)',
+    'crash.commentPlaceholder': 'Example: I opened the inventory in Devias during an invasion',
+    'crash.send': 'Send',
+    'crash.dontSend': "Don't send",
+    'crash.sending': 'Sending...',
+    'crash.sent': 'Report sent. Thank you!',
+    'crash.failed': 'Could not send the report. Check your internet and try again.',
+    'crash.close': 'Close'
   },
 
   Por: {
@@ -195,7 +208,20 @@ const TRANSLATIONS = {
     'tray.minimized': 'AsgardMU minimizado na bandeja do sistema',
     'tray.characterSelected': 'Personagem Selecionado',
     'tray.characterSelectedMsg': 'O personagem "{name}" foi selecionado',
-    'menu.inspect': 'Inspecionar'
+    'menu.inspect': 'Inspecionar',
+
+    // Relatório de crash (src/main/crash-report.js)
+    'crash.title': 'O jogo fechou com um erro',
+    'crash.message': 'O AsgardMU parou de funcionar. Quer enviar os dados do erro para a Equipe AsgardMU? Lemos todos os relatórios e usamos os dados para corrigir os crashes.',
+    'crash.details': 'O relatório tem os logs de erro do jogo, o arquivo do crash, as versões do launcher e das DLLs, o Windows, o processador, a placa de vídeo, a memória, o nome do computador e o nome do personagem. Não tem senha nem arquivos pessoais.',
+    'crash.commentLabel': 'O que você fazia quando o jogo fechou? (opcional)',
+    'crash.commentPlaceholder': 'Exemplo: abri o inventário em Devias durante uma invasão',
+    'crash.send': 'Enviar',
+    'crash.dontSend': 'Não enviar',
+    'crash.sending': 'Enviando...',
+    'crash.sent': 'Relatório enviado. Obrigado!',
+    'crash.failed': 'Não foi possível enviar o relatório. Verifique a internet e tente de novo.',
+    'crash.close': 'Fechar'
   },
 
   Spa: {
@@ -286,7 +312,20 @@ const TRANSLATIONS = {
     'tray.minimized': 'AsgardMU minimizado en la bandeja del sistema',
     'tray.characterSelected': 'Personaje Seleccionado',
     'tray.characterSelectedMsg': 'El personaje "{name}" ha sido seleccionado',
-    'menu.inspect': 'Inspeccionar'
+    'menu.inspect': 'Inspeccionar',
+
+    // Relatório de crash (src/main/crash-report.js)
+    'crash.title': 'El juego se cerró con un error',
+    'crash.message': 'AsgardMU dejó de funcionar. ¿Quiere enviar los datos del error al Equipo AsgardMU? Leemos todos los informes y los usamos para corregir los crashes.',
+    'crash.details': 'El informe tiene los logs de error del juego, el archivo del crash, las versiones del launcher y de las DLL, su Windows, procesador, tarjeta de video, memoria, el nombre del equipo y el nombre del personaje. No tiene contraseñas ni archivos personales.',
+    'crash.commentLabel': '¿Qué hacía cuando el juego se cerró? (opcional)',
+    'crash.commentPlaceholder': 'Ejemplo: abrí el inventario en Devias durante una invasión',
+    'crash.send': 'Enviar',
+    'crash.dontSend': 'No enviar',
+    'crash.sending': 'Enviando...',
+    'crash.sent': 'Informe enviado. ¡Gracias!',
+    'crash.failed': 'No se pudo enviar el informe. Revise su internet e intente de nuevo.',
+    'crash.close': 'Cerrar'
   }
 };
 
