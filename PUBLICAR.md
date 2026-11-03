@@ -87,6 +87,26 @@ Regras:
 - Preferências do jogador (`configs.ini`, `option.ini`, `*.pos`): uma alteração não substitui a cópia do jogador. Um arquivo novo desse tipo só é baixado por quem não o tem.
 - As regras ficam no início de `tools/release.js` (`LAUNCHER_FILES`, `IGNORE`, `SEED`).
 
+### Itens ou personagens novos: atualize a lista de leitura
+
+A `AsgardCustom.dll` carrega os modelos e texturas de `Data/Item` e `Data/Player` no select server. Para isso ela lê os arquivos na ordem do disco, com base numa lista. Sem a lista certa, a primeira abertura num PC frio (recém-ligado) leva até 50 s para chegar ao select de personagem. Com a lista, leva cerca de 10 s.
+
+- A DLL usa `ErrorLog/DeferFiles.txt`. Ela grava esse arquivo a cada abertura com os arquivos que abriu.
+- Se esse arquivo não existe (instalação nova, `ErrorLog` apagado), a DLL usa `Data/Custom/DeferFiles.txt`, que vai com o cliente.
+
+Um arquivo novo que falta na lista não quebra nada. A DLL lê esse arquivo do disco do jeito antigo, só ele fica mais lento. Na abertura seguinte, a lista do jogador em `ErrorLog` já o inclui. Um arquivo removido que está na lista é ignorado.
+
+Atualize `Data/Custom/DeferFiles.txt` quando o patch adicionar, trocar ou remover muitos arquivos em `Data/Item` ou `Data/Player` (por exemplo, um conjunto de itens novos):
+
+1. Copie os arquivos novos para a pasta do cliente.
+2. Abra o jogo pela pasta do cliente e espere o select server por cerca de 15 s (o carregamento termina e a DLL grava a lista).
+3. Feche o jogo.
+4. Copie `ErrorLog/DeferFiles.txt` para `Data/Custom/DeferFiles.txt`.
+5. Confira que o arquivo tem mais de 5 000 linhas.
+6. Publique o patch. `Data/Custom/DeferFiles.txt` aparece em "Alterados".
+
+O `AsgardCustom.log` mostra a lista em uso: `deferread: ... files ... read in ... ms`. A linha `deferread: no ErrorLog\DeferFiles.txt, list from Data\Custom\DeferFiles.txt` indica que a cópia do cliente foi usada.
+
 ## Publicar um launcher novo
 
 1. Aumente `"version"` no `package.json` (ex.: `1.0.0` -> `1.0.1`).
