@@ -503,7 +503,8 @@ app.whenReady().then(() => {
     logEvent
   });
 
-  // Jogo travou: pergunta se o jogador quer enviar os dados do erro à equipe
+  // Jogo travou: envia automaticamente o relatório de crash à equipe.
+  // Se o envio falhar, mostra a janela para o jogador tentar manualmente.
   crashReport = new CrashReport({
     getGameDirectory,
     reportUrl: URL_CONFIG.CRASH_REPORT_URL,
@@ -515,7 +516,8 @@ app.whenReady().then(() => {
     getLanguage: () => currentLanguage,
     icon: resolveAsset('icon.ico'),
     store,
-    logEvent
+    logEvent,
+    autoSend: true
   });
 
   // Carregar idioma salvo para o menu da bandeja e notificações

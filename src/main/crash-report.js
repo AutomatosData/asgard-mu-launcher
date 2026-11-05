@@ -90,6 +90,7 @@ class CrashReport {
    * @param {string} [opts.icon]
    * @param {object} opts.store                   electron-store (relatórios já mostrados)
    * @param {(level: string, message: string) => void} [opts.logEvent]
+   * @param {boolean} [opts.autoSend]             true = envia sem perguntar ao jogador
    */
   constructor(opts) {
     this.opts = opts;
@@ -113,6 +114,31 @@ class CrashReport {
       crash.pid = pid;
       crash.exitCode = exitCode;
       this.logEvent('warning', `[CrashReport] Crash do jogo (PID ${pid}, código ${crash.exitCodeHex(exitCode)}): ${crash.stackFile || crash.dumpFile}`);
+
+      // Envio automático: coleta e envia sem perguntar ao jogador.
+      if (this.opts.autoSend && this.opts.reportUrl) {
+        try {
+          const payload = {
+            ...(await this.collect(crash)),
+            ...((await this.readDump(crash)) || {})
+          };
+          const axios = require('axios');
+          await axios.post(this.opts.reportUrl, payload, {
+            timeout: 60000,
+            maxBodyLength: 8 * 1024 * 1024,
+            headers: this.opts.reportToken ? { 'x-crash-token': this.opts.reportToken } : {}
+          });
+          this.logEvent('info', `[CrashReport] Relatório enviado automaticamente (${payload.reportKey})`);
+        } catch (error) {
+          const status = error.response ? ` (HTTP ${error.response.status})` : '';
+          this.logEvent('error', `[CrashReport] Falha no envio automático${status}: ${error.message}`);
+          // Falha no envio automático: mostra a janela para o jogador tentar manualmente.
+          this.queue.push(crash);
+          if (!this.window) this.showNext();
+        }
+        return;
+      }
+
       this.queue.push(crash);
       if (!this.window) this.showNext();
     } catch (error) {
