@@ -3,6 +3,9 @@ class GameSettings {
         this.registryPath = 'HKEY_CURRENT_USER\\Software\\Webzen\\Mu\\Config';
         // Resoluções do monitor na ordem do jogo; o valor de cada opção é o DevModeIndex
         this.displayModes = null;
+        this.workArea = null;
+        // Proporção padrão da janela de configurações
+        this.defaultRatio = '16:9';
         
         this.init();
     }
@@ -42,6 +45,13 @@ class GameSettings {
             }
         });
 
+        // Proporção: mostra só as resoluções da proporção marcada
+        document.querySelectorAll('input[name="aspectRatio"]').forEach(radio => {
+            radio.addEventListener('change', () => {
+                if (radio.checked) this.fillResolutions(radio.value, null);
+            });
+        });
+
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
@@ -77,20 +87,43 @@ class GameSettings {
         } catch (error) {
             console.error('Failed to read display modes:', error);
         }
-        const select = document.getElementById('resolutionSelect');
-        if (select) {
-            select.innerHTML = '';
-            for (const mode of modes) {
-                const option = document.createElement('option');
-                option.value = String(mode.index);
-                // Em modo janela o jogo encolhe o que não cabe na área livre da tela
-                const tooBig = workArea && (mode.width > workArea.width || mode.height > workArea.height);
-                option.textContent = `${mode.width}x${mode.height} (${mode.ratio})${tooBig ? ' *' : ''}`;
-                select.appendChild(option);
-            }
-        }
         this.displayModes = modes;
+        this.workArea = workArea;
         return modes;
+    }
+
+    isTooBig(mode) {
+        // Em modo janela o jogo encolhe o que não cabe na área livre da tela
+        const area = this.workArea;
+        return !!area && (mode.width > area.width || mode.height > area.height);
+    }
+
+    setRatioRadio(ratio) {
+        const radio = document.querySelector(`input[name="aspectRatio"][value="${ratio}"]`);
+        if (radio) radio.checked = true;
+    }
+
+    // Preenche a lista só com as resoluções da proporção. O valor de cada opção
+    // continua o DevModeIndex da lista completa. selectedIndex null = escolhe a
+    // maior resolução que cabe na tela.
+    fillResolutions(ratio, selectedIndex) {
+        const select = document.getElementById('resolutionSelect');
+        if (!select) return;
+        const modes = (this.displayModes || []).filter(m => m.ratio === ratio);
+        select.innerHTML = '';
+        for (const mode of modes) {
+            const option = document.createElement('option');
+            option.value = String(mode.index);
+            option.textContent = `${mode.width}x${mode.height}${this.isTooBig(mode) ? ' *' : ''}`;
+            select.appendChild(option);
+        }
+        if (!modes.length) return;
+        let pick = modes.find(m => m.index === selectedIndex);
+        if (!pick) {
+            const fitting = modes.filter(m => !this.isTooBig(m));
+            pick = fitting.length ? fitting[fitting.length - 1] : modes[0];
+        }
+        select.value = String(pick.index);
     }
 
     async loadCurrentSettings() {
@@ -144,12 +177,12 @@ class GameSettings {
 
     applySettingsToUI(settings) {
         // Apply resolution
-        const resolutionSelect = document.getElementById('resolutionSelect');
-        if (resolutionSelect && resolutionSelect.options.length) {
-            const index = Number.isInteger(settings.resolution) ? settings.resolution : 0;
-            // Índice fora da lista: o jogo abre em 800x600, que é a primeira opção
-            resolutionSelect.value = index < resolutionSelect.options.length ? String(index) : '0';
-        }
+        // Abre na proporção da resolução salva; sem resolução válida, 16:9
+        const modes = this.displayModes || [];
+        const saved = modes.find(m => m.index === settings.resolution);
+        const ratio = saved ? saved.ratio : this.defaultRatio;
+        this.setRatioRadio(ratio);
+        this.fillResolutions(ratio, saved ? saved.index : null);
 
         // Apply display mode
         const displayMode = settings.windowMode === 1 ? 'window' : 'fullscreen';

@@ -839,6 +839,13 @@ webview iframe {
     gap: 2px;
 }
 
+/* Proporção da tela: opções lado a lado */
+.radio-group.ratio-group {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 4px 24px;
+}
+
 .radio-option,
 .checkbox-option {
     display: flex;
