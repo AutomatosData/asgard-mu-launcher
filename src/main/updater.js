@@ -12,7 +12,7 @@ const installDirs = require('./install-dirs');
 //   client   -> cliente completo em partes .zip (primeira instalação, data-manager.js)
 //   launcher -> versão e instalador atuais do launcher (launcher-update.js)
 //   files    -> arquivos alterados depois do cliente completo: { path, size, hash, url, keep }
-//               keep = preferência do jogador (ex.: configs.ini): baixa só se faltar
+//               keep = preferência do jogador (ex.: option.ini): baixa só se faltar
 class Updater {
   constructor() {
     this.manifestUrl = '';

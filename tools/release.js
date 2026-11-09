@@ -83,7 +83,6 @@ const IGNORE = [
 // Preferências do jogador: vão no cliente completo; no patch só se forem arquivos novos,
 // com "keep" (o launcher baixa só se o jogador não tiver o arquivo)
 const SEED = [
-  /^configs\.ini$/, // opções da AsgardCustom.dll (janela O)
   /^option\.ini$/,
   /^data\/sound\/option\.ini$/, // volume e mudo dos canais de som (o jogo grava)
   /\.pos$/ // posição das janelas Lua
