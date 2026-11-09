@@ -23,7 +23,7 @@ const URL_CONFIG = {
   GAME_SERVER: {
     HOST: 'asgardmu.com.br',
     PORT: 44405,
-    PING_INTERVAL_MS: 5000
+    PING_INTERVAL_MS: 60000
   },
 
   // ===== ENDPOINTS DO LAUNCHER =====
