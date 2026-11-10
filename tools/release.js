@@ -105,7 +105,7 @@ function parseArgs(argv) {
     if (arg.startsWith('--')) {
       const name = arg.slice(2);
       const next = argv[i + 1];
-      if (['client', 'part-size'].includes(name)) {
+      if (['client', 'part-size', 'from'].includes(name)) {
         args[name] = next;
         i++;
       } else {
@@ -689,9 +689,25 @@ async function cmdPatch(target, args) {
   const manifest = await loadManifest(target);
   if (!manifest || !manifest.client) fail('Nenhum cliente publicado. Rode "npm run release:client" primeiro.');
 
-  const snapshot = await loadSnapshot(target, manifest);
   const local = await readClient(args);
-  const diff = diffClient(local, publishedState(snapshot, manifest));
+  let state;
+  if (args.from) {
+    // --from <pasta>: compara com uma instalação antiga, não com o manifesto.
+    // Usado depois de um --reset: quem tinha a base antiga recebe a diferença em patch.
+    console.log('Comparando com a instalação em --from:');
+    const old = await readClient({ client: args.from });
+    state = new Map(old.files.map(file => [file.path.toLowerCase(), file]));
+    // Arquivos já no manifesto com o mesmo conteúdo não entram de novo
+    for (const file of manifest.files || []) {
+      const key = file.path.toLowerCase();
+      const mine = local.files.find(f => f.path.toLowerCase() === key);
+      if (mine && mine.size === file.size && mine.hash === file.hash) state.set(key, file);
+    }
+  } else {
+    const snapshot = await loadSnapshot(target, manifest);
+    state = publishedState(snapshot, manifest);
+  }
+  const diff = diffClient(local, state);
 
   printList('Alterados', diff.changed);
   printList('Novos', diff.added);

@@ -66,6 +66,9 @@ Se houver alteração que ainda não saiu em patch, o script para. Publique o pa
 
 Quem já tem o jogo não recebe as alterações pendentes. Use antes da abertura, ou peça para os jogadores reinstalarem.
 
+Para corrigir isso depois do `--reset`, publique a diferença em patch a partir de uma instalação antiga:
+`npm run release:patch -- --from "C:\AsgardMU"`. O script compara o cliente com essa pasta, não com o manifesto.
+
 ### Runtime do Visual C++
 
 O `Main.dll` precisa do runtime Visual C++ 2015-2022 de 32 bits (`msvcp140.dll` e `vcruntime140.dll`).
