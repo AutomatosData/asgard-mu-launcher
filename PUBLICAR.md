@@ -118,6 +118,8 @@ O `AsgardCustom.log` mostra a lista em uso: `deferread: ... files ... read in ..
 3. Rode `npm run release:launcher`. Responda `s` para enviar.
 4. Envie o instalador novo para o Google Drive.
 
+O `npm run dist` verifica o instalador com o Windows Defender. Se houver detecção, ele apaga o instalador e mostra um erro: rode `npm run dist` de novo. O launcher 2.0.0 foi publicado com um falso positivo (`Trojan:Win32/Bearfoos.A!ml`) e o manifesto voltou para o 1.0.7 no mesmo dia.
+
 O launcher só se atualiza para uma versão maior. O script recusa a mesma versão com outro conteúdo.
 
 ## Google Drive

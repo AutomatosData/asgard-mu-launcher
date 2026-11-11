@@ -31,4 +31,23 @@ const outDir = path.join(ROOT, 'dist');
 fs.mkdirSync(outDir, { recursive: true });
 const out = path.join(outDir, `AsgardMU-Setup-${version}.exe`);
 fs.copyFileSync(setup, out);
+
+// O Windows Defender já marcou um instalador como "Trojan:Win32/Bearfoos.A!ml" (launcher 2.0.0,
+// 2026-11-11): falso positivo de heurística, que muda de um build para outro. O instalador
+// só sai daqui depois de uma verificação limpa. Com detecção, rode "npm run dist" de novo.
+const defender = path.join(process.env.ProgramFiles || 'C:/Program Files', 'Windows Defender', 'MpCmdRun.exe');
+if (fs.existsSync(defender)) {
+  const scan = spawnSync(defender, ['-Scan', '-ScanType', '3', '-File', out, '-DisableRemediation'], { encoding: 'utf8' });
+  const text = `${scan.stdout || ''}${scan.stderr || ''}`;
+  const threat = /^Threat\s*:\s*(.+)$/m.exec(text);
+  if (threat || !/found no threats/i.test(text)) {
+    try { fs.unlinkSync(out); } catch {}
+    console.error(`\nERRO: o Windows Defender não aprovou o instalador${threat ? ` (${threat[1].trim()})` : ''}.`);
+    console.error('Rode "npm run dist" de novo. Não publique um instalador com detecção.');
+    process.exit(1);
+  }
+  console.log('Windows Defender: nenhuma ameaça no instalador.');
+} else {
+  console.log('AVISO: MpCmdRun.exe não encontrado; o instalador não foi verificado pelo Windows Defender.');
+}
 console.log(`\nInstalador: ${out} (${(fs.statSync(out).size / 1024 / 1024).toFixed(1)} MB)`);
