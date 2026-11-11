@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<!-- Janela dos avisos: transparente, por cima da janela principal (src-tauri/src/main.rs,
+     toast_show). O site fica em um webview que cobre o HTML da interface; por isso os
+     avisos têm janela própria. Não recebe o mouse nem o foco. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AsgardMU</title>
+<link rel="stylesheet" href="styles/main.css">
+<style>
+  html, body { background: transparent !important; }
+</style>
+</head>
+<body>
+  <div class="notification-container" id="notificationContainer"></div>
+<script>
+  // O mesmo tempo de TOAST_MS em src-tauri/src/main.rs
+  const TOAST_MS = 5000;
+  window.__TAURI__.event.listen('toast', event => {
+    const data = event.payload || {};
+    const notification = document.createElement('div');
+    notification.className = `notification ${data.type || 'info'}`;
+    notification.textContent = data.message || '';
+    document.getElementById('notificationContainer').appendChild(notification);
+    setTimeout(() => notification.remove(), TOAST_MS);
+  });
+</script>
+</body>
+</html>

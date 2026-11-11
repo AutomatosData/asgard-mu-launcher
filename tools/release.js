@@ -33,7 +33,7 @@ const crypto = require('crypto');
 const readline = require('readline');
 const { spawnSync } = require('child_process');
 const StreamZip = require('node-stream-zip');
-const URL_CONFIG = require('../src/shared/url-config');
+const URL_CONFIG = require('../ui/shared/url-config');
 
 const ROOT = path.resolve(__dirname, '..');
 const PKG = require(path.join(ROOT, 'package.json'));
@@ -56,11 +56,11 @@ const MAX_ASSETS = 900;
 // ===== REGRAS DOS ARQUIVOS DO CLIENTE =====
 // Caminhos relativos à pasta do cliente, com "/" e em minúsculas.
 
-// Arquivos do launcher (Electron): vêm do instalador, nunca do cliente. O instalador põe o
-// launcher em "Launcher/" e um AsgardMU.exe pequeno na raiz (build/installer.nsh); as
-// instalações antigas têm os arquivos na raiz
+// Arquivos do launcher: vêm do instalador, nunca do cliente. O launcher (Tauri) é o
+// AsgardMU.exe da raiz, com o uninstall.exe. As instalações do launcher antigo (Electron)
+// têm os arquivos dele em "Launcher/" ou na raiz
 const LAUNCHER_FILES = new Set([
-  'asgardmu.exe', 'uninstall asgardmu.exe', 'chrome_100_percent.pak', 'chrome_200_percent.pak',
+  'asgardmu.exe', 'uninstall.exe', 'uninstall asgardmu.exe', 'chrome_100_percent.pak', 'chrome_200_percent.pak',
   'resources.pak', 'icudtl.dat', 'snapshot_blob.bin', 'v8_context_snapshot.bin', 'version',
   'vk_swiftshader.dll', 'vk_swiftshader_icd.json', 'vulkan-1.dll', 'ffmpeg.dll',
   'd3dcompiler_47.dll', 'dxcompiler.dll', 'dxil.dll', 'libegl.dll', 'libglesv2.dll',

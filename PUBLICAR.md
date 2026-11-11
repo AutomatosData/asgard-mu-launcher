@@ -7,16 +7,17 @@ O **Google Drive** guarda só o instalador, para o jogador baixar pelo navegador
 ## Como funciona
 
 1. O jogador baixa `AsgardMU-Setup.exe` (Google Drive ou link do GitHub) e instala.
-   - Não pede administrador. Pasta padrão: `%LOCALAPPDATA%\Programs\AsgardMU`. O jogador pode escolher outra pasta.
+   - Não pede administrador. Pasta padrão: `C:\AsgardMU`. O jogador pode escolher outra pasta.
    - Cria atalho na área de trabalho e no menu Iniciar.
-   - O launcher (Electron) fica na pasta oculta `Launcher\`. Na pasta do jogo fica um `AsgardMU.exe` pequeno que o abre (`build/stub`, compilar com `build/stub/build.bat` se mudar). O launcher oculta as DLLs do jogo, `Data` e `ErrorLog` (`src/main/install-dirs.js`). O jogador vê só `AsgardMU.exe` e os `.ini`.
+   - O launcher (Rust + Tauri) é o `AsgardMU.exe` da pasta do jogo. Ele usa o WebView2 do Windows; se faltar, o instalador instala. O launcher oculta as DLLs do jogo, `Data` e `ErrorLog` (`src-tauri/src/dirs.rs`). O jogador vê só `AsgardMU.exe` e os `.ini`.
+   - Por cima de uma instalação do launcher antigo (Electron), o instalador apaga a pasta `Launcher\` e mantém o jogo (`src-tauri/installer-hooks.nsh`).
 2. Na primeira abertura, o launcher baixa o cliente completo (partes `.zip`) e extrai na mesma pasta.
    - Se a internet cair, o download continua de onde parou.
    - O launcher confere o tamanho e o MD5 de cada parte.
 3. Em toda abertura, o launcher lê o `update.json` e baixa só os arquivos alterados (patches).
 4. Se existir launcher novo, o launcher baixa o instalador novo, instala em silêncio na mesma pasta e abre de novo. O jogo não é apagado.
 
-O link fixo do manifesto está em `src/shared/url-config.js`:
+O link fixo do manifesto está em `ui/shared/url-config.js` e `src-tauri/src/config.rs`:
 `https://github.com/AutomatosData/asgard-mu-client/releases/download/current/update.json`
 
 | Release no GitHub    | Conteúdo                                                        |
@@ -86,7 +87,7 @@ O launcher dos jogadores baixa o patch na próxima abertura.
 
 Regras:
 - O patch não apaga arquivos no jogador. Para tirar um arquivo, troque o conteúdo dele.
-- Nunca entram no patch: logs, `*.bak*`, `LauncherOption.if`, `Data/Launcher`, `ErrorLog`, `ScreenShots`, `inbox`, `JewelBank/_tmp` e os arquivos do Electron. Pastas que ficam sem arquivos vão vazias no cliente completo.
+- Nunca entram no patch: logs, `*.bak*`, `LauncherOption.if`, `Data/Launcher`, `ErrorLog`, `ScreenShots`, `inbox`, `JewelBank/_tmp` e os arquivos do launcher. Pastas que ficam sem arquivos vão vazias no cliente completo.
 - Preferências do jogador (`configs.ini`, `option.ini`, `*.pos`): uma alteração não substitui a cópia do jogador. Um arquivo novo desse tipo só é baixado por quem não o tem.
 - As regras ficam no início de `tools/release.js` (`LAUNCHER_FILES`, `IGNORE`, `SEED`).
 
@@ -113,7 +114,7 @@ O `AsgardCustom.log` mostra a lista em uso: `deferread: ... files ... read in ..
 ## Publicar um launcher novo
 
 1. Aumente `"version"` no `package.json` (ex.: `1.0.0` -> `1.0.1`).
-2. Rode `npm run dist`. O instalador fica em `dist\AsgardMU-Setup-<versão>.exe`.
+2. Rode `npm run dist` (precisa do Rust: `rustup`). O instalador fica em `dist\AsgardMU-Setup-<versão>.exe`.
 3. Rode `npm run release:launcher`. Responda `s` para enviar.
 4. Envie o instalador novo para o Google Drive.
 
@@ -125,7 +126,7 @@ O launcher só se atualiza para uma versão maior. O script recusa a mesma vers�
 2. Compartilhe: "Qualquer pessoa com o link" -> "Leitor".
 3. Nas próximas versões, clique com o botão direito no arquivo -> "Gerenciar versões" -> "Enviar nova versão". O link continua o mesmo.
 
-O instalador tem menos de 100 MB. Assim o Drive não mostra o aviso "não é possível verificar vírus".
+O instalador tem cerca de 5 MB. Assim o Drive não mostra o aviso "não é possível verificar vírus".
 Não coloque o cliente completo no Drive. O Drive bloqueia arquivos muito baixados ("cota excedida").
 
 Link alternativo, sempre da última versão:
@@ -141,9 +142,8 @@ Um certificado de assinatura de código remove o aviso, mas é pago.
 
 1. `node tools/release.js client --local --yes --client <pasta de teste>`. Os arquivos vão para `.release-local/`.
 2. `npm run release:serve` (servidor local na porta 18787). Para ver as barras andando, limite a velocidade: `node tools/serve-local.js 18787 1024` (1024 KB/s).
-3. Copie `dist\win-unpacked` para uma pasta vazia.
+3. Copie `src-tauri\target\release\AsgardMU.exe` para uma pasta vazia.
 4. Abra o `AsgardMU.exe` dessa pasta com a variável `ASGARD_MANIFEST_URL=http://127.0.0.1:18787/current/update.json`.
-   - Num terminal do VS Code, apague antes a variável `ELECTRON_RUN_AS_NODE`. Com ela, o Electron roda como Node e a janela não abre.
 5. Para testar um patch: altere um arquivo da pasta de teste e rode `node tools/release.js patch --local --yes --client <pasta de teste>`.
 
 O launcher de teste grava `gamePath` em `%APPDATA%\AsgardMU\config.json`. Faça uma cópia antes e restaure depois.

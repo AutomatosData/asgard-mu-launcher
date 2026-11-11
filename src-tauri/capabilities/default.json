@@ -1,0 +1,10 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Janelas da interface do launcher (ui/). O webview do site e a janela do whitepaper ficam fora: páginas da internet não chamam o launcher.",
+  "webviews": ["main", "crash", "toast"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-start-dragging"
+  ]
+}
