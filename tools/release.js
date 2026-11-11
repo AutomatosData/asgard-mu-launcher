@@ -853,7 +853,6 @@ async function cmdLauncher(target, args) {
 
   console.log(`\nLauncher ${version} publicado.`);
   console.log(`Link fixo para o site: ${URL_CONFIG.GITHUB.DOWNLOAD_URL}${CURRENT_TAG}/${SETUP_STABLE}`);
-  console.log(`Google Drive: envie ${setupPath}`);
 }
 
 async function main() {

@@ -174,7 +174,7 @@ const URL_CONFIG = {
 
 Step by step (Portuguese): **[PUBLICAR.md](PUBLICAR.md)**. Cost: zero.
 
-- **Installer** (`npm run dist` -> `dist/AsgardMU-Setup-<version>.exe`, ~80 MB): NSIS, per user, no UAC, the player can choose the folder. Players download it from Google Drive or from the fixed link `releases/download/current/AsgardMU-Setup.exe`.
+- **Installer** (`npm run dist` -> `dist/AsgardMU-Setup-<version>.exe`, ~5 MB, Rust + Tauri): NSIS, per user, no UAC, default folder `C:\AsgardMU`. Players download it from the fixed GitHub link `releases/download/current/AsgardMU-Setup.exe` (downloads page of the site).
 - **Full client**: on the first start the launcher downloads the `.zip` parts listed in `update.json` -> `client.parts` and extracts them next to `AsgardMU.exe` (`src/main/data-manager.js`; resumes broken downloads, checks size and MD5).
 - **Patches**: on every start the launcher checks the files in `update.json` -> `files` (size + MD5, with a hash cache in `Data/Launcher/hash-cache.json`) and downloads only what changed (`src/main/updater.js`).
 - **Launcher updates**: if `update.json` -> `launcher.version` is higher than the installed one, the launcher downloads the new setup, runs it silently in the same folder and quits; the setup starts the new launcher (`src/main/launcher-update.js`). `build/installer.nsh` keeps the game files during the update; uninstalling from Windows removes the whole folder.

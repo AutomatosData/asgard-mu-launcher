@@ -91,7 +91,7 @@ GITHUB: {
 1. Configure `url-config.js` with your server URLs
 2. Build the installer with `npm run dist`
 3. Publish the full client, the launcher and patches with `npm run release:*` (see PUBLICAR.md)
-4. Share `AsgardMU-Setup.exe` with your players (Google Drive or the GitHub link)
+4. Share the fixed GitHub link of `AsgardMU-Setup.exe` with your players
 
 ## Build Instructions
 

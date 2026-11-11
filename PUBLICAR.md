@@ -2,11 +2,11 @@
 
 Custo: zero. Tudo que o launcher baixa fica nos **GitHub Releases** do repositório público
 [AutomatosData/asgard-mu-client](https://github.com/AutomatosData/asgard-mu-client/releases).
-O **Google Drive** guarda só o instalador, para o jogador baixar pelo navegador.
+O instalador também fica lá, com link fixo para a página de downloads do site.
 
 ## Como funciona
 
-1. O jogador baixa `AsgardMU-Setup.exe` (Google Drive ou link do GitHub) e instala.
+1. O jogador baixa `AsgardMU-Setup.exe` pelo link do site (GitHub) e instala.
    - Não pede administrador. Pasta padrão: `C:\AsgardMU`. O jogador pode escolher outra pasta.
    - Cria atalho na área de trabalho e no menu Iniciar.
    - O launcher (Rust + Tauri) é o `AsgardMU.exe` da pasta do jogo. Ele usa o WebView2 do Windows; se faltar, o instalador instala. O launcher oculta as DLLs do jogo, `Data` e `ErrorLog` (`src-tauri/src/dirs.rs`). O jogador vê só `AsgardMU.exe` e os `.ini`.
@@ -40,8 +40,7 @@ Não apague nenhum release. Jogadores antigos ainda usam arquivos de releases an
 
 1. `npm run dist` (gera o instalador).
 2. `npm run release:client` (cliente completo).
-3. `npm run release:launcher` (instalador).
-4. Envie o instalador para o Google Drive (seção abaixo).
+3. `npm run release:launcher` (instalador e link fixo do site).
 
 ## Publicar o cliente completo
 
@@ -115,24 +114,18 @@ O `AsgardCustom.log` mostra a lista em uso: `deferread: ... files ... read in ..
 
 1. Aumente `"version"` no `package.json` (ex.: `1.0.0` -> `1.0.1`).
 2. Rode `npm run dist` (precisa do Rust: `rustup`). O instalador fica em `dist\AsgardMU-Setup-<versão>.exe`.
-3. Rode `npm run release:launcher`. Responda `s` para enviar.
-4. Envie o instalador novo para o Google Drive.
+3. Rode `npm run release:launcher`. Responda `s` para enviar. O link fixo do site passa a entregar o instalador novo.
 
 O `npm run dist` verifica o instalador com o Windows Defender. Se houver detecção, ele apaga o instalador e mostra um erro: rode `npm run dist` de novo. O launcher 2.0.0 foi publicado com um falso positivo (`Trojan:Win32/Bearfoos.A!ml`) e o manifesto voltou para o 1.0.7 no mesmo dia.
 
 O launcher só se atualiza para uma versão maior. O script recusa a mesma versão com outro conteúdo.
 
-## Google Drive
+## Link do site
 
-1. Na primeira vez, envie `dist\AsgardMU-Setup-<versão>.exe` e renomeie para `AsgardMU-Setup.exe`.
-2. Compartilhe: "Qualquer pessoa com o link" -> "Leitor".
-3. Nas próximas versões, clique com o botão direito no arquivo -> "Gerenciar versões" -> "Enviar nova versão". O link continua o mesmo.
-
-O instalador tem cerca de 5 MB. Assim o Drive não mostra o aviso "não é possível verificar vírus".
-Não coloque o cliente completo no Drive. O Drive bloqueia arquivos muito baixados ("cota excedida").
-
-Link alternativo, sempre da última versão:
+A página de downloads do site (Asgard-Mu-Website, `src/app/downloads/page.tsx`) aponta só para este link, sempre da última versão:
 `https://github.com/AutomatosData/asgard-mu-client/releases/download/current/AsgardMU-Setup.exe`
+
+O `npm run release:launcher` atualiza o arquivo desse link. O Google Drive não é mais usado (removido em 2026-11-09).
 
 ## Aviso do Windows (SmartScreen)
 
