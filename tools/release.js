@@ -96,6 +96,88 @@ function classify(rel) {
   return 'game';
 }
 
+// ===== ARQUIVOS COMPARTILHADOS (Data/AssetLinks.txt) =====
+// Texturas e modelos iguais em mais de uma pasta (ex.: o mesmo tile em 48 pastas World):
+// o cliente completo leva só a primeira cópia (ordem alfabética) e o mapa "cópia<TAB>original".
+// O glu32.dll (MainLoader/ no repositório do servidor) abre o original quando a cópia não
+// existe. Arquivo real na pasta sempre vence: o patch manda a cópia como arquivo próprio
+// quando o conteúdo dela fica diferente do original.
+const LINKS_FILE = 'Data/AssetLinks.txt';
+const SHARED_FILE = /^data\/.+\.(ozj|ozt|ozp|ozb|ozd|bmd|tga|jpg)$/;
+
+// Map cópia -> original (caminhos como na pasta do cliente)
+// O original é sempre um arquivo real (as cópias que já não existem na pasta vêm por último)
+function findLinks(files) {
+  const first = new Map();
+  const links = new Map();
+  const ordered = [...files.filter(file => !file.source), ...files.filter(file => file.source)];
+  for (const file of ordered) {
+    if (file.seed || !SHARED_FILE.test(file.path.toLowerCase())) continue;
+    const key = `${file.size}:${file.hash}`;
+    const original = first.get(key);
+    if (original) links.set(file.path, original.path);
+    else first.set(key, file);
+  }
+  return links;
+}
+
+// Grava Data/AssetLinks.txt (só se mudou) e põe o arquivo na lista do cliente
+async function writeLinks(local, links) {
+  const lines = ['# AsgardMU: copia<TAB>original. Gerado por tools/release.js (launcher). Nao edite.'];
+  for (const [alias, original] of links) lines.push(`${alias.replace(/\//g, '\\')}\t${original.replace(/\//g, '\\')}`);
+  const text = lines.join('\r\n') + '\r\n';
+  const full = path.join(local.clientDir, LINKS_FILE);
+  let old = null;
+  try {
+    old = fs.readFileSync(full, 'latin1');
+  } catch {}
+  if (old !== text) fs.writeFileSync(full, text, 'latin1');
+
+  let entry = local.files.find(file => file.path.toLowerCase() === LINKS_FILE.toLowerCase());
+  if (!entry) {
+    entry = { path: LINKS_FILE, seed: false };
+    local.files.push(entry);
+    local.files.sort((a, b) => a.path.localeCompare(b.path, 'en'));
+  }
+  await hashFiles(local.clientDir, [entry]);
+}
+
+// Pastas que ficam sem arquivo no zip quando as cópias saem (o tar cria a pasta vazia)
+function emptiedDirs(shipped, links) {
+  const used = new Set();
+  for (const file of shipped) {
+    const parts = file.path.toLowerCase().split('/');
+    for (let i = 1; i < parts.length; i++) used.add(parts.slice(0, i).join('/'));
+  }
+  const dirs = new Map();
+  for (const alias of links.keys()) {
+    const parts = alias.split('/');
+    for (let i = 1; i < parts.length; i++) {
+      const dir = parts.slice(0, i).join('/');
+      if (!used.has(dir.toLowerCase())) dirs.set(dir.toLowerCase(), dir);
+    }
+  }
+  // Só as pastas mais fundas: o zip cria as de cima
+  const keys = [...dirs.keys()];
+  return keys.filter(key => !keys.some(other => other.startsWith(`${key}/`))).map(key => dirs.get(key));
+}
+
+// Cópias sem arquivo no jogador (cliente completo com mapa) cujo conteúdo agora difere do
+// original: vão no patch como arquivo próprio
+function linkFixes(local, snapshot, manifest) {
+  const own = new Set((manifest.files || []).map(file => file.path.toLowerCase()));
+  const byKey = new Map(local.files.map(file => [file.path.toLowerCase(), file]));
+  const fixes = [];
+  for (const [alias, original] of Object.entries(snapshot.links || {})) {
+    if (own.has(alias.toLowerCase())) continue;
+    const mine = byKey.get(alias.toLowerCase());
+    const target = byKey.get(original.toLowerCase());
+    if (!mine || (target && target.size === mine.size && target.hash === mine.hash)) continue;
+    fixes.push(mine);
+  }
+  return fixes;
+}
+
 // ===== UTILITÁRIOS =====
 
 function parseArgs(argv) {
@@ -484,7 +566,35 @@ async function readClient(args) {
   const total = scan.files.reduce((sum, file) => sum + file.size, 0);
   console.log(`  ${scan.files.length} arquivos (${formatSize(total)}); fora da publicação: ` +
     `${scan.counts.launcher} do launcher, ${scan.counts.ignore} logs/backups/dados locais`);
+  const virtual = addMissingLinks(clientDir, scan.files);
+  if (virtual) console.log(`  ${virtual} cópias só no ${LINKS_FILE} (o jogo abre o original)`);
   return { clientDir, ...scan, total };
+}
+
+// Cópias do mapa que não existem na pasta (o cliente de desenvolvimento também fica sem elas):
+// entram na lista com o conteúdo do original; "source" = arquivo real de onde copiar
+function addMissingLinks(clientDir, files) {
+  let text;
+  try {
+    text = fs.readFileSync(path.join(clientDir, LINKS_FILE), 'latin1');
+  } catch {
+    return 0;
+  }
+  const byKey = new Map(files.map(file => [file.path.toLowerCase(), file]));
+  let count = 0;
+  for (const line of text.split(/\r?\n/)) {
+    if (!line || line.startsWith('#')) continue;
+    const [alias, original] = line.split('\t').map(part => (part || '').replace(/\\/g, '/'));
+    if (!alias || !original || byKey.has(alias.toLowerCase())) continue;
+    const target = byKey.get(original.toLowerCase());
+    if (!target || target.source) continue;
+    const file = { path: alias, seed: false, size: target.size, hash: target.hash, source: target.path };
+    files.push(file);
+    byKey.set(alias.toLowerCase(), file);
+    count++;
+  }
+  files.sort((a, b) => a.path.localeCompare(b.path, 'en'));
+  return count;
 }
 
 // O que o jogador tem hoje: cliente completo + patches do manifesto
@@ -552,13 +662,16 @@ async function cmdStatus(target, args) {
   const snapshot = await loadSnapshot(target, manifest);
   const local = await readClient(args);
   const diff = diffClient(local, publishedState(snapshot, manifest));
-  if (!diff.changed.length && !diff.added.length && !diff.removed.length) {
+  const fixes = linkFixes(local, snapshot, manifest).filter(file => !diff.changed.includes(file));
+  if (snapshot.links) console.log(`  Cópias compartilhadas no cliente completo: ${Object.keys(snapshot.links).length}`);
+  if (!diff.changed.length && !diff.added.length && !diff.removed.length && !fixes.length) {
     console.log('Pasta do cliente igual ao publicado.');
     return;
   }
   console.log('Diferenças da pasta do cliente para o publicado:');
   printList('Alterados', diff.changed);
   printList('Novos', diff.added);
+  printList('Cópias que ficaram diferentes do original (vão no patch)', fixes);
   printList('Apagados (o patch não apaga arquivos no jogador)', diff.removed);
 }
 
@@ -575,10 +688,19 @@ async function cmdClient(target, args) {
     }
   }
 
+  // Cópias compartilhadas: ficam fora do zip; o mapa vai no cliente
+  const links = findLinks(local.files);
+  if (!args['dry-run']) await writeLinks(local, links);
+  const shipped = local.files.filter(file => !links.has(file.path));
+  const shippedSize = shipped.reduce((sum, file) => sum + file.size, 0);
+  const emptyDirs = [...new Set([...local.emptyDirs, ...emptiedDirs(shipped, links)])];
+  const linkedSize = local.files.filter(file => links.has(file.path)).reduce((sum, file) => sum + file.size, 0);
+  console.log(`  Cópias compartilhadas (fora do zip): ${links.size} arquivos, ${formatSize(linkedSize)}`);
+
   const partLimit = Math.min(ASSET_LIMIT, (parseInt(args['part-size'], 10) || 1800) * MB);
   const parts = [];
   let current = null;
-  for (const file of local.files) {
+  for (const file of shipped) {
     if (file.size > ASSET_LIMIT) fail(`Arquivo maior que o limite do GitHub (2 GB): ${file.path}`);
     if (!current || (current.size + file.size > partLimit && current.files.length)) {
       current = { files: [], size: 0 };
@@ -610,7 +732,7 @@ async function cmdClient(target, args) {
     const listPath = path.join(outDir, `part${i + 1}.txt`);
     const entries = part.files.map(file => file.path);
     // Pasta sem "/" no fim: com a barra, o tar.exe do Windows lê lixo no lugar do nome
-    if (i === 0) entries.unshift(...local.emptyDirs);
+    if (i === 0) entries.unshift(...emptyDirs);
     fs.writeFileSync(listPath, entries.join('\n') + '\n');
 
     console.log(`Compactando parte ${i + 1}/${parts.length}...`);
@@ -631,9 +753,11 @@ async function cmdClient(target, args) {
     console.log(`  ${name}: ${formatSize(size)}`);
   }
 
+  // As cópias ficam na lista com o MD5 do original: o patch compara com o que o jogador vê
   const snapshot = {
     version,
-    files: Object.fromEntries(local.files.map(file => [file.path, [file.size, file.hash]]))
+    files: Object.fromEntries(local.files.map(file => [file.path, [file.size, file.hash]])),
+    links: Object.fromEntries(links)
   };
   const snapshotPath = path.join(outDir, SNAPSHOT);
   fs.writeFileSync(snapshotPath, JSON.stringify(snapshot));
@@ -650,7 +774,8 @@ async function cmdClient(target, args) {
   target.createRelease(tag, {
     title: `Cliente ${version}`,
     notes: `Cliente completo do AsgardMU (primeira instalação pelo launcher).\n\n` +
-      `${local.files.length} arquivos, ${formatSize(local.total)} instalados, ${partInfo.length} parte(s).`,
+      `${shipped.length} arquivos, ${formatSize(shippedSize)} instalados, ${partInfo.length} parte(s). ` +
+      `${links.size} cópias compartilhadas (Data/AssetLinks.txt).`,
     latest: false
   });
   target.upload(tag, [...partInfo.map(part => path.join(outDir, part.name)), snapshotPath]);
@@ -662,8 +787,8 @@ async function cmdClient(target, args) {
     client: {
       version,
       tag,
-      files: local.files.length,
-      installedSize: local.total,
+      files: shipped.length,
+      installedSize: shippedSize,
       snapshot: `../${tag}/${SNAPSHOT}`,
       parts: partInfo
     },
@@ -690,6 +815,7 @@ async function cmdPatch(target, args) {
   if (!manifest || !manifest.client) fail('Nenhum cliente publicado. Rode "npm run release:client" primeiro.');
 
   const local = await readClient(args);
+  const snapshot = await loadSnapshot(target, manifest);
   let state;
   if (args.from) {
     // --from <pasta>: compara com uma instalação antiga, não com o manifesto.
@@ -704,13 +830,15 @@ async function cmdPatch(target, args) {
       if (mine && mine.size === file.size && mine.hash === file.hash) state.set(key, file);
     }
   } else {
-    const snapshot = await loadSnapshot(target, manifest);
     state = publishedState(snapshot, manifest);
   }
   const diff = diffClient(local, state);
+  const fixes = linkFixes(local, snapshot, manifest).filter(file => !diff.changed.includes(file));
+  diff.changed.push(...fixes);
 
   printList('Alterados', diff.changed);
   printList('Novos', diff.added);
+  if (fixes.length) console.log(`  (${fixes.length} dos alterados: cópias compartilhadas que ficaram diferentes do original)`);
   printList('Apagados (o patch não apaga arquivos no jogador; ignorados)', diff.removed);
 
   const files = [...diff.changed, ...diff.added];
@@ -769,7 +897,8 @@ async function cmdPatch(target, args) {
     fs.mkdirSync(outDir, { recursive: true });
     const staged = release.names.map(name => {
       const dest = path.join(outDir, name);
-      fs.copyFileSync(path.join(local.clientDir, assets.get(name).path), dest);
+      const file = assets.get(name);
+      fs.copyFileSync(path.join(local.clientDir, file.source || file.path), dest);
       return dest;
     });
 

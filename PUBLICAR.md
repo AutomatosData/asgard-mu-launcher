@@ -90,6 +90,16 @@ Regras:
 - Preferências do jogador (`configs.ini`, `option.ini`, `*.pos`): uma alteração não substitui a cópia do jogador. Um arquivo novo desse tipo só é baixado por quem não o tem.
 - As regras ficam no início de `tools/release.js` (`LAUNCHER_FILES`, `IGNORE`, `SEED`).
 
+### Arquivos compartilhados (`Data/AssetLinks.txt`)
+
+Muitas texturas e modelos são iguais em mais de uma pasta (ex.: o mesmo tile em 48 pastas `World`). Desde 2026-11-13 o cliente tem só uma cópia de cada um. O mapa `Data/AssetLinks.txt` lista `cópia<TAB>original`. Quando o jogo abre uma cópia que não existe, o `glu32.dll` (`MainLoader/` no repositório do servidor) abre o original.
+
+- O `release:client` refaz o mapa. O mapa leva as cópias que já estão nele e as cópias novas iguais a um arquivo da pasta. O zip não leva as cópias.
+- As cópias não ficam na pasta do cliente. As 5 501 cópias de 2026-11-13 estão em `_backup/client_2026-11-13_shared_files/`.
+- Um arquivo real no caminho de uma cópia sempre vence. Para dar a uma pasta uma textura própria, ponha o arquivo novo nesse caminho e rode `release:patch`.
+- Altere o original para alterar todas as cópias. O patch manda o original e também as cópias, para quem tem o cliente antigo com as cópias reais.
+- Ferramentas que leem arquivos direto do disco (scripts Python do ModelTool) não passam pelo `glu32.dll`. Para elas, leia o caminho do original no mapa.
+
 ### Itens ou personagens novos: atualize a lista de leitura
 
 A `AsgardCustom.dll` carrega os modelos e texturas de `Data/Item` e `Data/Player` no select server. Para isso ela lê os arquivos na ordem do disco, com base numa lista. Sem a lista certa, a primeira abertura num PC frio (recém-ligado) leva até 50 s para chegar ao select de personagem. Com a lista, leva cerca de 10 s.
